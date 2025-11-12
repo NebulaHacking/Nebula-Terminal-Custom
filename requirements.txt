@@ -33,6 +33,6 @@ pyqt5
 # Optional extras you referenced (if available)
 # (les modules Tools.*, NebulaGui etc. sont locaux, ne doivent pas être ici)
 
-pywebvie
 PyQt5
 PyQtWebEngine
+
