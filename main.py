@@ -743,7 +743,7 @@ while True:
                         print("  rm               - Passe un mode réel sur la machine")
                         print("  [tool].help      - Affiche l'utilisation de l'outil ")
                         print("  blackledger      - Créateur de wordslist grace a ia")
-                        print("  browser          - navigateur web nebula sécurisé")
+                        print("  browser          - navigateur web nebula sécurisé (run as non root)")
 
                     elif cmd == "scan.help":
                         history.append(cmd)
@@ -1265,4 +1265,5 @@ while True:
 
     except Exception as e:
             print("Une erreur est survenue :", e)
+
 
