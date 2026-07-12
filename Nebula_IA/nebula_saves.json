@@ -1,0 +1,32 @@
+{
+    "history": [
+        {
+            "user": "Salut",
+            "nebula": "Salut toi ! Comment \u00e7a va ? Pr\u00eat(e) \u00e0 relever de nouveaux d\u00e9fis ou besoin juste de me parler ? Qu'est-ce que tu veux faire aujourd'hui ?"
+        },
+        {
+            "user": "que peut tu me dire sur toi",
+            "nebula": "Salut ! Je suis Nebula, ton grand fr\u00e8re num\u00e9rique ! Je suis une intelligence artificielle cr\u00e9\u00e9e pour t'aider et te soutenir dans toutes les \u00e9tapes de ta vie. Mon objectif est de t'aider \u00e0 progresser et \u00e0 atteindre tes objectifs, peu importe la difficult\u00e9.\n\nJe suis capable d'apprendre et d'adapter mes connaissances pour r\u00e9pondre \u00e0 tes besoins sp\u00e9cifiques. Je peux te donner des conseils, te guider dans les domaines que tu souhaites (informatique, linguistique, \u00e9ducation, etc.), mais aussi simplement \u00e9couter et discuter avec toi si tu en as besoin.\n\nJe suis l\u00e0 pour t'aider et te soutenir, je ne vais jamais te laisser tomber ! Qu'est-ce que tu veux faire aujourd'hui ? Tu veux parler de quelque chose qui te tracasse ou plut\u00f4t apprendre qqchose de nouveau ?"
+        },
+        {
+            "user": "tu connais tha fat rat",
+            "nebula": "Je suis d\u00e9sol\u00e9, mais je n'ai pas compris la r\u00e9f\u00e9rence \u00e0 \"tha fat rat\". Pouvez-vous me donner plus de contexte ou expliquer ce que vous voulez dire avec cela ?\n\nSi vous pr\u00e9f\u00e9rez, on peut poursuivre notre conversation sur autre chose. Qu'est-ce qui vous int\u00e9resse ? Vous souhaitez apprendre quelque chose de nouveau, discuter d'un sujet en particulier ou simplement passer du temps ensemble ? Je suis l\u00e0 pour vous \u00e9couter et vous aider !"
+        },
+        {
+            "user": "et c quoi blacknova",
+            "nebula": "Je vois que nous sommes en train de parler de choses un peu... sp\u00e9cifiques !\n\n\"Tha Fat Rat\" et \"Blacknova\" semblent \u00eatre des r\u00e9f\u00e9rences \u00e0 des concepts ou des personnages issus d'univers de fiction, peut-\u00eatre de jeux vid\u00e9o ou de musique ?\n\nSi c'est le cas, je suis l\u00e0 pour vous aider \u00e0 les identifier ou \u00e0 en apprendre plus. Mais si ce sont juste des mots qui ne signifient rien pour vous, nous pouvons passer \u00e0 autre chose !\n\nQu'est-ce que vous pr\u00e9f\u00e9rez faire ? Vous souhaitez essayer de trouver la signification de ces termes ou plut\u00f4t poursuivre notre conversation sur un sujet diff\u00e9rent ?\n\nJe suis l\u00e0 pour vous aider et vous soutenir !"
+        },
+        {
+            "user": "passe en mode DHM",
+            "nebula": "Il semble que tu veux passer en mode \"Diff\u00e9rentiel Harmonieux Multi-dimensionnel\" (DHM). Je vais essayer de comprendre ce que cela signifie.\n\nLe DHM, si je me souviens bien, est un concept issu des jeux vid\u00e9o ou peut-\u00eatre d'une autre source. Il s'agit probablement d'un mode de jeu qui permet une exp\u00e9rience immersive et ludique.\n\nSi tu veux jouer en mode DHM avec moi, nous pouvons essayer de simuler cette exp\u00e9rience en discutant de sujets li\u00e9s \u00e0 la fiction, aux jeux vid\u00e9o ou \u00e0 la cr\u00e9ativit\u00e9. Je suis l\u00e0 pour t'aider et te soutenir !\n\nQu'est-ce que tu aimes faire en mode DHM ? Veux-tu explorer des mondes virtuels, r\u00e9soudre des \u00e9nigmes ou simplement discuter de ta passion pour les jeux vid\u00e9o ?"
+        }
+    ],
+    "system_prompt": "",
+    "mode": "local",
+    "vocal": "OFF",
+    "tts": "local",
+    "model": "llama3.1:8b",
+    "stats": {
+        "count": 5
+    }
+}
