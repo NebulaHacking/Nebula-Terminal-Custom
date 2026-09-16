@@ -180,6 +180,58 @@ def generate_wordlist(inputs: Dict[str,str], extra_terms: Optional[List[str]]=No
     return final
 
 # ------------------------------
+# Interactive UI (repli des lignes 884-926 de l'ancien main.py)
+# ------------------------------
+
+def interactive_generate() -> None:
+    """Collecte interactive des infos, génère la wordlist et la sauvegarde.
+
+    Porte la UI du blackledger de l'ancien terminal_custom() : prompts ligne à
+    ligne, config fixe (20000 mots, depth 3, leet 2, seed 1337), sauvegarde avec
+    `wordlist.txt` par défaut si le chemin n'est pas renseigné.
+    """
+    print("\n=== BlackLedger Wordlist Generator ===")
+    print("Veuillez entrer les informations pour générer la wordlist.\n")
+
+    inputs = {
+        "url": input("URL du site (laisser vide si aucun) : ").strip(),
+        "domain": input("Nom de domaine (ex: example.com) : ").strip(),
+        "title": input("Titre ou nom du projet : ").strip(),
+        "company": input("Nom de l'entreprise ou team : ").strip(),
+        "keywords": input("Mots-clés séparés par des espaces : ").strip(),
+        "location": input("Lieu (ville/pays) : ").strip(),
+        "user": input("Nom d'utilisateur ou handle : ").strip(),
+        "events": input("Événements ou dates (ex: launch2025, winter) : ").strip(),
+        "base": input("Terme de base (ex: Nebula, BlackLedger) : ").strip()
+    }
+
+    # Termes supplémentaires
+    extra_terms = input("Termes supplémentaires (séparés par des espaces) : ").split()
+
+    # Configuration
+    cfg = WordlistConfig(
+        max_words=20000,
+        max_depth=3,
+        leet_levels=2,
+        seed=1337
+    )
+
+    # Génération
+    wordlist = generate_wordlist(inputs, extra_terms=extra_terms, config=cfg)
+
+    # Demande du chemin de sauvegarde
+    save_path = input("Chemin complet pour sauvegarder la wordlist (ex: ./Tools/BlackLedger/wordlists/wordlists.txt) : ").strip()
+    if not save_path:
+        save_path = "wordlist.txt"  # valeur par défaut
+
+    with open(save_path, "w", encoding="utf-8") as f:
+        for w in wordlist:
+            f.write(w + "\n")
+
+    print(f"\n✓ Wordlist générée avec {len(wordlist)} mots et sauvegardée dans : {save_path}")
+
+
+# ------------------------------
 # CLI demo
 # ------------------------------
 

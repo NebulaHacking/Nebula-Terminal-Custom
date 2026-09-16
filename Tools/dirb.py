@@ -9,12 +9,29 @@ import keyboard
 mots_minimal = ["admin", "login", "dashboard", "config", "test", "server",
                 "panel", "secret", "backup", "old"]
 
+# Wordlist par défaut (fallback si baseWord.txt introuvable).
+# Fusion de `mots_dirb_base`, liste morte de l'ancien main.py (lignes 54-67).
+DEFAULT_WORDLIST = [
+    "login", "dashboard", "config", "backup", "admin", "test", "uploads", "images",
+    "js", "css", "includes", "api", "server-status", "data", "private", "tmp", "db",
+    "old", "dev", "phpmyadmin", "console", "hidden", "auth", "cgi-bin", "panel",
+    "webadmin", "setup", "install", "users", "register", "logout", "home", "index",
+    "status", "bin", "core", "access", "files", "assets", "secure", "secret", "mail",
+    "robots.txt", ".htaccess", ".htpasswd", "sitemap.xml", "logs", "downloads",
+    "config.bak", "admin_old", "wordpress", "wp-login", "wp-admin", "site", "beta",
+    "staging", "v1", "v2", "debug", "error", "signin", "signup", "rest", "json",
+    "xml", "account", "contact", "form", "pay", "payment", "invoice", "api-docs",
+    "monitor", "shell", "node_modules", "vendor", "lib", "static", "public", "portal",
+    "client", "server", "manager", "sys", "env", "token", "session", "login.php",
+    "index.php", "main", "core_old", "vulnerable", "exposed"
+]
+
 def dirb(url_base, minimal=False, wordlist=None):
     """
     Scan de répertoires basique.
     - minimal=True : utilise la mini-liste intégrée
     - wordlist=chemin_fichier : utilise un fichier wordlist spécifique
-    - sinon : utilise DirbWordListe/baseWord.txt
+    - sinon : DirbWordListe/baseWord.txt, avec fallback DEFAULT_WORDLIST
     """
     url_valide = []
     testés = 0
@@ -44,15 +61,14 @@ def dirb(url_base, minimal=False, wordlist=None):
                 print(f"Fichier introuvable : {wordlist}")
                 return
     else:
+        # Par défaut : baseWord.txt si trouvé, sinon DEFAULT_WORDLIST (anc. mots_dirb_base)
+        mots = None
         fichiers_trouves = glob.glob(os.path.join(os.getcwd(), "**", "DirbWordListe", "baseWord.txt"), recursive=True)
         if fichiers_trouves:
-            fichier = fichiers_trouves[0]  # prend le premier trouvé
-        try:
-            with open(fichier, "r", encoding="utf-8") as f:
+            with open(fichiers_trouves[0], "r", encoding="utf-8") as f:
                 mots = [ligne.strip() for ligne in f if ligne.strip()]
-        except FileNotFoundError:
-            print(f"Fichier introuvable : {fichier}")
-            return
+        if not mots:
+            mots = list(DEFAULT_WORDLIST)
 
     total = len(mots)
     print(f"--- Scan DIRB démarré sur {url_base} ---")

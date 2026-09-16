@@ -36,9 +36,6 @@ def install_ollama():
 
 
 
-import pyautogui
-import time
-import os
 from colorama import Fore, Style
 
 def pull_model_user_folder():

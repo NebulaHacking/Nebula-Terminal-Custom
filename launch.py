@@ -1,4 +1,4 @@
-# launch.py (remplace ton fichier)
+# launch.py — Lanceur principal de Nebula Terminal Custom
 import os
 import sys
 import subprocess
@@ -9,6 +9,36 @@ BASE_DIR = Path(__file__).resolve().parent
 VENV_DIR = BASE_DIR / "venv"
 REQ_FILE = BASE_DIR / "requirements.txt"
 MAIN_FILE = BASE_DIR / "main.py"
+ENV_FILE = BASE_DIR / ".env"
+
+def load_env_file():
+    """Charge le fichier .env (s'il existe) dans os.environ.
+
+    Implémenté sans python-dotenv ici pour fonctionner même avant
+    l'installation des dépendances. Respecte les variables déjà
+    définies dans l'environnement (celles-ci ont la priorité).
+    """
+    if not ENV_FILE.exists():
+        print("[*] Aucun fichier .env trouvé (les variables avancées ne sont pas définies).")
+        print("[*] Copie .env.example vers .env pour activer les clés API.")
+        return
+    loaded = 0
+    try:
+        for raw_line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key, value = key.strip(), value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+                loaded += 1
+        if loaded:
+            print(f"[*] Fichier .env chargé ({loaded} variables).")
+        else:
+            print("[*] Fichier .env présent, aucune nouvelle variable chargée.")
+    except OSError as e:
+        print(f"[!] Impossible de lire {ENV_FILE} ({e}).")
 
 def run(cmd, **kwargs):
     print(f"[CMD] {' '.join(cmd)}")
@@ -22,7 +52,7 @@ def create_venv(python_exe=None):
         print("[*] venv déjà présent.")
         return
     print("[*] Création de l'environnement virtuel (venv)...")
-    # Utilise le python courant si pas fourni
+    # Utilise le python courant, sinon celui passé en argument
     python_to_use = python_exe or sys.executable
     # Crée le venv en appelant python -m venv pour compatibilité
     run([python_to_use, "-m", "venv", str(VENV_DIR)])
@@ -35,6 +65,9 @@ def get_venv_python():
         return VENV_DIR / "bin" / "python"
 
 def main():
+    # 0) Charge les variables d'environnement depuis .env
+    load_env_file()
+
     # 1) Crée venv si nécessaire
     create_venv()
 

@@ -31,11 +31,6 @@ Tools.nexariescan.run_scan — Scanner interne « nexariescan »
   - Plateforme : Cross-platform.
   - Note : vérifier limites de rate/threads et activer SAFE_MODE par défaut.
 
-Tools.blacknova.blacknova — Module d’action avancée (nom suggestif)
-  - Description : fonctionnalité interne (probablement brute/attaque/outil spécialisé). Nom indique action puissante.
-  - Plateforme : Cross-platform.
-  - Note de sécurité : doit être verrouillé par défaut. Requiert flag explicite pour activation (ex : NEBULA_ALLOW_DANGEROUS=1 + consentement).
-
 ToolsFunction.netstorm — Fonction utilitaire « netstorm »
   - Description : utilitaire réseau intégré — nom évocateur d’activité importante sur le réseau (tests de charge, etc).
   - Plateforme : Cross-platform.

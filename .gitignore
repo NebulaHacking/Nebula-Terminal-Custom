@@ -1,0 +1,47 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+*.whl
+
+# === Environnements virtuels ===
+venv/
+.venv/
+env/
+
+# === Secrets & configuration locale ===
+.env
+.env.local
+
+# === Modèles entraînés (volatiles) ===
+*.pkl
+*.joblib
+
+# === Runtime Nebula ===
+saves/
+nebula_saves.json
+coffre_base.json
+*.html
+
+# === OSINT : clés API jamais versionnées ===
+Tools/nebula_osint/config/settings.json
+
+# === Rapports/artefacts générés ===
+rapport_*.txt
+ip_positions_map.html
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+
+# === Système ===
+Thumbs.db
+.DS_Store
+
+# === Coffre de mémoire Mind-NTC (privé, Obsidian) ===
+Mind-NTC/

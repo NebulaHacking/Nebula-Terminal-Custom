@@ -1,0 +1,17 @@
+# --- RECHERCHE DE PSEUDOS ---
+https://github.com/{target}
+https://gitlab.com/{target}
+https://pastebin.com/u/{target}
+https://medium.com/@{target}
+https://www.reddit.com/user/{target}
+https://www.pinterest.com/{target}
+https://www.flickr.com/photos/{target}
+# --- ANALYSE DE DOMAINES ---
+https://crt.sh/?q={target}
+https://www.dnsgrep.cn/subdomain/{target}
+https://securitytrails.com/domain/{target}
+https://viewdns.info/dnsrecord/?domain={target}
+# --- ANALYSE D'ADRESSES IP ---
+https://www.abuseipdb.com/check/{target}
+https://ipinfo.io/{target}
+https://scamalytics.com/ip/{target}

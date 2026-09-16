@@ -1,44 +1,48 @@
-# HTTP / parsing / utilities
+# ================================================================
+# Nebula Terminal Custom — Dépendances Python
+# Stockés dans le venv (voir launch.py). Ne pas installer en global.
+# ================================================================
+
+# --- HTTP / parsing ---
 requests
 beautifulsoup4
 lxml
+httpx
 
-# CLI / affichage
+# --- CLI / affichage ---
 colorama
 pyfiglet
 rich
 
-# Interaction clavier & GUI
-keyboard
-tk   # note: installation système requise sur certaines plateformes
-
-# Mapping / cartographie
+# --- Mapping / cartographie ---
 folium
 branca
 
-# System / utilitaires
+# --- System / réseau ---
 psutil
 python-whois
+icmplib
+holehe
+trio
 
-# Data / ML
+# --- Data / Machine Learning ---
 numpy
 scikit-learn
 joblib
 
-# Optional / networking helpers
-whois
-pyqt5
-
-
-# Optional extras you referenced (if available)
-# (les modules Tools.*, NebulaGui etc. sont locaux, ne doivent pas être ici)
-
-
+# --- GUI (NebulaGui) ---
 PyQt5
 PyQtWebEngine
 
+# --- Nebula IA ---
+# IA locale (Ollama) utilisée via subprocess — pas de package à installer
 pyttsx3
-pyautogui
-playsound
-PySide6
-icmplib
+sounddevice
+soundfile
+openai
+
+# --- Interaction clavier (optionnel) ---
+keyboard
+
+# --- Chargement du fichier .env (secrets) ---
+python-dotenv

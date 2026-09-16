@@ -2,7 +2,7 @@ import socket
 import threading
 import time
 
-def worker(ip, port, stop_time, counter):
+def worker(ip, port, stop_time, counter, lock):
     while time.time() < stop_time:
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -10,7 +10,8 @@ def worker(ip, port, stop_time, counter):
             s.connect((ip, port))
             s.send(b"PING / HTTP/1.1\r\n\r\n")
             s.close()
-            counter['count'] += 1
+            with lock:
+                counter['count'] += 1
         except:
             pass
 
@@ -30,10 +31,11 @@ def run(ip, port=80, duration=10, threads=50):
     print(f"[NetStorm] Lancement du test sur {ip}:{port} pendant {duration}s avec {threads} threads")
     stop_time = time.time() + duration
     counter = {'count': 0}
+    lock = threading.Lock()
 
     thread_list = []
     for _ in range(threads):
-        t = threading.Thread(target=worker, args=(ip, port, stop_time, counter))
+        t = threading.Thread(target=worker, args=(ip, port, stop_time, counter, lock))
         t.daemon = True
         t.start()
         thread_list.append(t)

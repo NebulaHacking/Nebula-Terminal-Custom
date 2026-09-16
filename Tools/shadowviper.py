@@ -282,8 +282,8 @@ def get_whois_info(target):
                 if len(val_str) > 150:
                     val_str = val_str[:150] + "..."
                 print(f"{k.capitalize()}: {val_str}")
-        return w
         global_data["whois_data"] = w  # Le dict complet retourné par whois
+        return w
     except Exception as e:
         print(f"Erreur whois: {e}")
         return None
@@ -340,7 +340,16 @@ def analyze_url(url):
 # --- MAIN ---
 
 def run_shadowviper(input_value):
-    
+    # Reset de l'état global pour éviter la pollution entre deux appels
+    global open_ports, global_data
+    open_ports = []
+    global_data = {
+        "domain": "", "avg_ttl": 0, "latitude": 0.0, "longitude": 0.0,
+        "country": "", "region": "", "city": "", "isp": "", "org": "",
+        "asn": "", "proxy": False, "hosting": False, "mobile": False,
+        "timezone": "", "whois_data": {}, "ip_api_data": {}, "open_ports": [],
+    }
+
     affichage_viper()
     input_type = detect_input_type(input_value)
     print(f"Type détecté : {input_type}")
@@ -353,8 +362,8 @@ def run_shadowviper(input_value):
             get_ip_info(ip)
         else:
             print("Impossible de résoudre l'IP du domaine.")
+            return
         get_whois_info(input_value)
-        get_ip_info(input_value)
         scan_ports(input_value)
         dns_lookup(input_value)
     elif input_type == "url":
