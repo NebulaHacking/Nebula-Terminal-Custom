@@ -221,4 +221,12 @@ def Menu_Principale():
     clear()
     print("Chargement du monde néon...")
     time.sleep(1)
-    game_loop()
+    try:
+        game_loop()
+    except KeyboardInterrupt:
+        # Sortie propre sur Ctrl-C (au lieu d'une trace brute)
+        print("\n" + RED + "Partie interrompue." + RESET)
+
+
+if __name__ == "__main__":
+    Menu_Principale()

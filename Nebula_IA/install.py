@@ -39,11 +39,22 @@ def install_ollama():
 from colorama import Fore, Style
 
 def pull_model_user_folder():
-    print("")
-    print("Ouvrez un nouveau terminal et tapez :")
-    print(Fore.RED + "ollama pull llama3.1:8b" + Style.RESET_ALL)
-    print("")
-    print("[+] Terminé ! Le terminal est maintenant en train de télécharger.")
+    """Télécharge réellement le modèle via `ollama pull`."""
+    print(f"\n[+] Téléchargement du modèle {MODEL_NAME} (cela peut prendre plusieurs minutes)...")
+    try:
+        # Lance réellement le pull et vérifie le code retour.
+        result = subprocess.run(["ollama", "pull", MODEL_NAME])
+        if result.returncode == 0:
+            print(f"[+] Modèle {MODEL_NAME} téléchargé avec succès.")
+        else:
+            print(f"[!] Le téléchargement a échoué (code {result.returncode}).")
+            print(f"    Relance manuellement : ollama pull {MODEL_NAME}")
+    except FileNotFoundError:
+        print("[!] La commande 'ollama' est introuvable.")
+        print(f"    Installe Ollama puis relance : ollama pull {MODEL_NAME}")
+    except Exception as e:
+        print(f"[!] Erreur pendant le téléchargement : {e}")
+        print(f"    Relance manuellement : ollama pull {MODEL_NAME}")
 
 
 def setup_openai():
@@ -52,7 +63,21 @@ def setup_openai():
     key = input("Entre ta clé OPENAI_API_KEY (laisser vide pour ignorer) : ").strip()
     if key:
         os.environ["OPENAI_API_KEY"] = key
-        print("[+] Clé enregistrée pour cette session.")
+        # Persiste la clé dans le fichier .env (sinon elle est perdue au redémarrage)
+        env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+        try:
+            lines = []
+            if os.path.exists(env_path):
+                with open(env_path, "r", encoding="utf-8") as f:
+                    lines = [l for l in f.read().splitlines() if not l.startswith("OPENAI_API_KEY=")]
+            else:
+                lines = ["# Généré par Nebula_IA/install.py"]
+            lines.append(f"OPENAI_API_KEY={key}")
+            with open(env_path, "w", encoding="utf-8") as f:
+                f.write("\n".join(lines) + "\n")
+            print(f"[+] Clé enregistrée dans {env_path}.")
+        except OSError as e:
+            print(f"[!] Clé valable pour cette session seulement (écriture .env impossible : {e}).")
     else:
         print("[!] Mode online non configuré.")
 

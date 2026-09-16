@@ -8,6 +8,12 @@ nosint - Nebula OSINT Tool
 
 import requests
 import urllib.parse
+from urllib.parse import urljoin
+
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    BeautifulSoup = None
 
 # Configurations par défaut des proxies Tor locaux (SOCKS5)
 TOR_PROXIES = {
@@ -18,9 +24,10 @@ TOR_PROXIES = {
 def search_ahmia_onion(query: str, use_tor_network: bool = True) -> list:
     """
     Interroge l'index public Ahmia pour trouver des mentions d'une cible sur des pages .onion.
+    Parse RÉELLEMENT le HTML retourné (BeautifulSoup4) au lieu de renvoyer un faux résultat.
     """
     encoded_query = urllib.parse.quote_plus(query)
-    
+
     # Si Tor est disponible, on utilise l'adresse .onion officielle d'Ahmia
     if use_tor_network:
         # URL de l'adresse v3 onion d'Ahmia
@@ -35,24 +42,32 @@ def search_ahmia_onion(query: str, use_tor_network: bool = True) -> list:
         # Envoi de la requête avec un timeout pour ne pas bloquer indéfiniment
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:109.0) Gecko/20100101 Firefox/115.0'}
         response = requests.get(url, proxies=proxies, headers=headers, timeout=12)
-        
-        if response.status_code == 200:
-            # Note : Ahmia renvoie du HTML brut. En production, on peut parser les résultats 
-            # de recherche (liens et descriptions .onion) à l'aide de BeautifulSoup4.
-            # Pour l'instant, on simule une extraction structurée des correspondances légitimes.
-            results = [
-                {
-                    "title": f"Mention publique de la cible '{query}'",
-                    "onion_url": "http://example57jrzrnw6insl.onion/post/12",
-                    "snippet": f"Résultats publics indexés par Ahmia concernant '{query}'."
-                }
-            ]
-            return results
     except Exception as e:
         # En cas d'erreur de connexion au proxy SOCKS de Tor ou au serveur
         raise ConnectionError(f"Échec de la connexion à Ahmia ({'via Tor' if use_tor_network else 'Clearnet'}) : {str(e)}")
-    
-    return []
+
+    if response.status_code != 200:
+        return []
+
+    if BeautifulSoup is None:
+        # Sans BS4, on ne peut pas parser : on retourne vide plutôt qu'un faux résultat.
+        return []
+
+    results = []
+    soup = BeautifulSoup(response.text, "html.parser")
+    # Ahmia structure ses résultats en <li class="result"> (h4 > a + p.snippet)
+    for block in soup.select("li.result"):
+        link_el = block.select_one("h4 a")
+        if not link_el:
+            continue
+        snippet_el = block.select_one("p")
+        results.append({
+            "title": link_el.get_text(strip=True),
+            "onion_url": urljoin(url, link_el.get("href", "")),
+            "snippet": snippet_el.get_text(strip=True) if snippet_el else "",
+        })
+
+    return results
 
 def run_module(target: str) -> dict:
     """

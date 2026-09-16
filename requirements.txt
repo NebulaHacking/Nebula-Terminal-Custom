@@ -24,6 +24,7 @@ python-whois
 icmplib
 holehe
 trio
+pysocks       # requis pour le proxy SOCKS5 Tor (nebula_osint étape 2)
 
 # --- Data / Machine Learning ---
 numpy

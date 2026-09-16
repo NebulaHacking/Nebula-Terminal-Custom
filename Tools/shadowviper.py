@@ -368,13 +368,18 @@ def run_shadowviper(input_value):
         dns_lookup(input_value)
     elif input_type == "url":
         analyze_url(input_value)
-        get_ip_info(input_value)
+        # get_ip_info attend une IP : on extrait l'hôte de l'URL puis on le résout.
+        host = urlparse(input_value).hostname
+        if host:
+            ip = resolve_domain_to_ip(host)
+            if ip:
+                get_ip_info(ip)
     elif input_type == "asn":
+        # Un ASN n'est pas une IP : pas de géoloc IP pertinente ici.
         get_asn_info(input_value)
-        get_ip_info(input_value)
     elif input_type == "email":
+        # Un email n'est pas une IP : pas de géoloc IP pertinente ici.
         search_email_osint(input_value)
-        get_ip_info(input_value)
     else:
         print("Type non reconnu, veuillez réessayer.")
 
