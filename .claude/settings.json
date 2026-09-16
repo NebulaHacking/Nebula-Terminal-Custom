@@ -8,5 +8,6 @@
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "auto/best-free",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "auto/best-free",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+    
   }
 }   
