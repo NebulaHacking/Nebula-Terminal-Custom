@@ -12,6 +12,8 @@ dist/
 venv/
 .venv/
 env/
+.claude
+
 
 # === Secrets & configuration locale ===
 .env
