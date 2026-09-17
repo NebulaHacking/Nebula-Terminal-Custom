@@ -178,7 +178,7 @@ def _blackledger(ctx, argv, raw):
     interactive_generate()
 
 
-@REGISTRY.register("filmux", help_text="filmux - permet de regarde n'importe quel film")
+@REGISTRY.register("filmux", help_text="filmux - Permet de regarder des films gratuitement dans une interface GUI")
 def _filmux(ctx, argv, raw):
-    from Tools.filmux.filumx import main
+    from Tools.filmux.filmux_gui import main
     main()

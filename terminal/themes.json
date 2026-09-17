@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "description": "Themes pour Nebula Terminal Custom",
+  "default": "micha",
+  "themes": {
+    "micha": {
+      "name": "Micha",
+      "description": "Theme sobre style Kali (vert)",
+      "prompt": {
+        "primary": "[92m",
+        "secondary": "[94m",
+        "accent": "[96m",
+        "reset": "[0m"
+      },
+      "rich": {
+        "border_style": "green",
+        "title_style": "bold green"
+      },
+      "gui": {
+        "background": "#121212",
+        "primary": "#00d4ff",
+        "secondary": "#1e1e1e",
+        "text": "#e0e0e0",
+        "input_bg": "#2d2d2d",
+        "item_bg": "#1a1a1a",
+        "item_selected": "#0078d4",
+        "item_hover": "#2d2d2d"
+      }
+    },
+    "redark": {
+      "name": "Redark",
+      "description": "Theme cyber style BlackArch (rouge/noir)",
+      "prompt": {
+        "primary": "[91m",
+        "secondary": "[38;5;196m",
+        "accent": "[91m",
+        "reset": "[0m"
+      },
+      "rich": {
+        "border_style": "red",
+        "title_style": "bold red"
+      },
+      "gui": {
+        "background": "#0a0a0a",
+        "primary": "#ff3333",
+        "secondary": "#1a0000",
+        "text": "#ffcccc",
+        "input_bg": "#2d0000",
+        "item_bg": "#0d0d0d",
+        "item_selected": "#cc0000",
+        "item_hover": "#2d0000"
+      }
+    }
+  }
+}
