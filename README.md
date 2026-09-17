@@ -1,4 +1,4 @@
-# Nebula Terminal (Version 1.4)
+# Nebula Terminal (Version 1.5.23)
 
 Nebula Terminal is an open-source Python project developed by the Nebula Cyber Security Team. It provides a modular terminal environment designed for learning, experimentation, and cybersecurity education through a Linux-inspired command-line interface.
 
