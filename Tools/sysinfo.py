@@ -61,10 +61,13 @@ def get_resolution() -> str:
 def get_gpu() -> str:
     try:
         if platform.system() == "Windows":
-            gpu = subprocess.check_output(
-                "wmic path win32_VideoController get name", shell=True
-            ).decode().strip().split("\n")[1]
-            return gpu
+            # wmic est retiré des Windows 11 récents → CIM via PowerShell.
+            out = subprocess.check_output(
+                ["powershell", "-NoProfile", "-Command",
+                 "(Get-CimInstance Win32_VideoController).Name"],
+                timeout=10, creationflags=subprocess.CREATE_NO_WINDOW,
+            ).decode(errors="replace")
+            return ", ".join(l.strip() for l in out.splitlines() if l.strip()) or "Unknown"
         gpu = subprocess.check_output("lspci | grep -i 'vga'", shell=True).decode().strip()
         return gpu
     except Exception:

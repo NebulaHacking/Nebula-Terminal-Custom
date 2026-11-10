@@ -4,7 +4,7 @@ Systeme de themes charge depuis themes.json
 Usage:
     from terminal.theme import get_theme, set_theme, is_redark
 
-    set_theme("redark")   # Active le theme redark
+    set_theme("redark")   # Active le theme (la persistance est faite par profil utilisateur, cf. core.main)
     theme = get_theme()   # Recupere la config du theme actif
 """
 import json
@@ -30,15 +30,6 @@ def _load_themes() -> Dict[str, Dict[str, Any]]:
     return _themes_cache
 
 
-def _load_config() -> Dict[str, Any]:
-    """Charge la config complete (version, default, etc.)."""
-    try:
-        with open(_THEME_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception:
-        return {"version": "1.0", "default": "micha", "themes": {}}
-
-
 def get_theme() -> Dict[str, Any]:
     """Retourne la configuration du theme courant."""
     themes = _load_themes()
@@ -47,7 +38,7 @@ def get_theme() -> Dict[str, Any]:
 
 def set_theme(theme_name: str) -> bool:
     """
-    Change le theme courant.
+    Change le theme courant (en mémoire). Sauvegardé dans le profil à la fermeture.
 
     Args:
         theme_name: Nom du theme ("micha", "redark", etc.)
@@ -78,16 +69,23 @@ def is_redark() -> bool:
     return _current_theme == "redark"
 
 
+def _to_ansi(color_code: str) -> str:
+    """Convert a Rich-style tag (e.g., [92m) to a standard ANSI escape sequence (e.g., 033[92m)."""
+    if color_code.startswith("[") and color_code.endswith("m"):
+        return color_code.replace("[", "\033[")
+    return color_code
+
 def get_prompt_colors() -> Dict[str, str]:
     """Retourne les couleurs ANSI pour le prompt selon le theme."""
     theme = get_theme()
     prompt = theme.get("prompt", {})
     return {
-        "primary": prompt.get("primary", "[92m"),
-        "secondary": prompt.get("secondary", "[94m"),
-        "accent": prompt.get("accent", "[96m"),
-        "reset": prompt.get("reset", "[0m")
+        "primary": _to_ansi(prompt.get("primary", "[92m")),
+        "secondary": _to_ansi(prompt.get("secondary", "[94m")),
+        "accent": _to_ansi(prompt.get("accent", "[96m")),
+        "reset": _to_ansi(prompt.get("reset", "[0m"))
     }
+
 
 
 def get_rich_style() -> Dict[str, str]:
@@ -104,6 +102,22 @@ def get_gui_colors() -> Dict[str, str]:
     """Retourne les couleurs pour les interfaces GUI (PyQt5)."""
     theme = get_theme()
     return theme.get("gui", {})
+
+
+def get_terminal_colors() -> Dict[str, str]:
+    """Retourne les couleurs ANSI pour les éléments du terminal (banners, menus, erreurs)."""
+    colors = get_prompt_colors()
+    theme = get_theme()
+    rich = theme.get("rich", {})
+
+    return {
+        "primary": colors["primary"],
+        "secondary": colors["secondary"],
+        "accent": colors.get("accent", colors["primary"]),
+        "reset": colors["reset"],
+        "border_style": rich.get("border_style", "green"),
+        "title_style": rich.get("title_style", "bold green"),
+    }
 
 
 # Alias pour compatibilite

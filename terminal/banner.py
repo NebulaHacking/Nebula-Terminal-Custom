@@ -11,23 +11,27 @@ import socket
 from colorama import Fore
 
 from Tools.sysinfo import get_gpu, get_packages, get_resolution, get_uptime
-
-from terminal.prompt import BLUE, GREEN, RESET
+from terminal.theme import get_prompt_colors
 
 
 def show_nebula() -> None:
-    """Logo N + panneau d'infos système (portage identique de l'original)."""
+    """Logo N + panneau d'infos système avec thème dynamique bicolore."""
+    colors = get_prompt_colors()
+    primary = colors["primary"]
+    secondary = colors["secondary"]
+    reset = colors["reset"]
+
     nebula_logo = [
         f"",
         f"",
-        f"{GREEN} /$$   /$${RESET}          ",
-        f"{GREEN}| $$$ | $${RESET}          ",
-        f"{GREEN}| $$$$| $${RESET}          ",
-        f"{GREEN}| $$ $$ $${RESET}          ",
-        f"{GREEN}| $$  $$$${RESET}          ",
-        f"{GREEN}| $$\\  $$${RESET}          ",
-        f"{GREEN}| $$ \\  $${RESET}          ",
-        f"{GREEN}|__/  \\__/ebula{RESET}     ",
+        f"{primary} /$$   /$${reset}          ",
+        f"{primary}| $$$ | $${reset}          ",
+        f"{primary}| $$$$| $${reset}          ",
+        f"{primary}| $$ $$ $${reset}          ",
+        f"{primary}| $$  $$$${reset}          ",
+        f"{primary}| $$\\  $$${reset}          ",
+        f"{primary}| $$ \\  $${reset}          ",
+        f"{primary}|__/  \\__/ebula{reset}     ",
         f"",
         "",
         ""
@@ -68,7 +72,7 @@ def show_nebula() -> None:
         info_values.append("")
 
     for i in range(max_lines):
-        print(f"{nebula_logo[i]:<20} {BLUE}{info_labels[i]:<12}{RESET} {GREEN}{info_values[i]}{RESET}")
+        print(f"{nebula_logo[i]:<20} {secondary}{info_labels[i]:<12}{reset} {primary}{info_values[i]}{reset}")
 
 
 def affichage_nebula() -> None:

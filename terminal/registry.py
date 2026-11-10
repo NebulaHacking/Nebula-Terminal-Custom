@@ -99,6 +99,8 @@ class CommandRegistry:
             cmd.func(ctx, argv, raw)
         except KeyboardInterrupt:
             print("\nInterrompu (Ctrl-C).")
+        except SystemExit:
+            pass  # un outil qui fait sys.exit() ne doit pas tuer le terminal (ni sauter la sauvegarde du profil)
         except Exception as e:
             # L'ancien code s'appuyait sur un try global ; ici on affiche l'erreur
             # en rouge et on continue la boucle (comportement pro, pas de crash).
@@ -109,7 +111,7 @@ class CommandRegistry:
     def _warn(message: str) -> None:
         try:
             from rich.console import Console
-            Console().print(f"[bold red]{message}[/]")
+            Console().print(message, style="bold red", markup=False)  # le texte peut contenir des [ ]
         except ImportError:
             print(message)
 

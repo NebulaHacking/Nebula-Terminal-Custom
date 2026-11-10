@@ -56,6 +56,8 @@ def _describe(cmd) -> str:
 @REGISTRY.register("help", help_text="help          - Liste des commandes disponibles",
                    summary="Affiche la liste des commandes en tableau")
 def _help(ctx, argv, raw):
+    from terminal.theme import get_rich_style
+
     try:
         from rich.console import Console
         from rich.table import Table
@@ -65,6 +67,11 @@ def _help(ctx, argv, raw):
             print(f"  {cmd.name:<16} {_describe(cmd)}")
         return
 
+    # Récupère les styles du thème
+    theme_styles = get_rich_style()
+    border_style = theme_styles["border_style"]
+    title_style = theme_styles["title_style"]
+
     # Ordre stable des catégories (défaut en fin de tableau)
     order = {mod: i for i, (mod, _, _) in enumerate(_HELP_CATEGORIES)}
     mods = {mod for mod, _, _ in _HELP_CATEGORIES}
@@ -73,9 +80,9 @@ def _help(ctx, argv, raw):
         return (order.get(c.func.__module__, len(mods)), c.name)
 
     console = Console()
-    tbl = Table(title="Nebula — Commandes disponibles", border_style="bright_blue",
-                header_style="bold", show_lines=False, pad_edge=False)
-    tbl.add_column("Commande", style="bold green", no_wrap=True, min_width=18)
+    tbl = Table(title="Nebula — Commandes disponibles", border_style=border_style,
+                header_style=title_style, show_lines=False, pad_edge=False)
+    tbl.add_column("Commande", style="bold", no_wrap=True, min_width=18)
     tbl.add_column("Description", style="white")
 
     current = None
@@ -121,19 +128,27 @@ def _nebula_ascii(ctx, argv, raw):
 
 
 # ---------------------------------------------------------------------
-# Couleurs console Windows
+# Thème
 # ---------------------------------------------------------------------
-@REGISTRY.register("color", help_text="color <n>      - Changer la couleur (0=reset, 2=vert, 3=cyan, 4=rouge, Windows)")
-def _color(ctx, argv, raw):
-    from Tools.systemtools import set_console_color
+@REGISTRY.register("theme", help_text="theme <nom>     - Changer le thème actif (ex: micha, redark)")
+def _theme(ctx, argv, raw):
+    from terminal.theme import set_theme, get_available_themes
 
-    if os.name != "nt":
-        print("color est réservé à Windows (cmd.exe).")
+    # argv[0] is the command name, argv[1:] are the arguments
+    if len(argv) < 2:
+        # List available themes if no name provided
+        themes = ", ".join(get_available_themes())
+        print(f"Thèmes disponibles : {themes}")
+        print("Usage : theme <nom>")
         return
-    try:
-        set_console_color(argv[1] if len(argv) > 1 else "")
-    except ValueError:
-        print("Usage : color 0 | 2 | 3 | 4")
+
+    theme_name = argv[1]
+    success = set_theme(theme_name)
+    if success:
+        print(f"Thème '{theme_name}' appliqué avec succès.")
+    else:
+        print(f"Échec : Le thème '{theme_name}' n'existe pas.")
+
 
 
 # ---------------------------------------------------------------------

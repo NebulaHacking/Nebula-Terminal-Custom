@@ -6,6 +6,10 @@ vit dans `terminal/context.py` (Context.vfs) et circule via les handlers.
 """
 import json
 import os
+from pathlib import Path
+
+# Absolu : les sauvegardes restent dans le projet quel que soit le dossier de lancement.
+SAVES_DIR = str(Path(__file__).resolve().parent.parent / "saves")
 
 
 class VirtualFS:
@@ -88,13 +92,13 @@ class VirtualFS:
     # Persistance (dossier `saves/`)
     # ------------------------------------------------------------------
     @staticmethod
-    def list_saves(saves_dir: str = "saves") -> list[str]:
+    def list_saves(saves_dir: str = SAVES_DIR) -> list[str]:
         """Liste les sauvegardes disponibles (*.txt) dans `saves_dir`."""
         if not os.path.isdir(saves_dir):
             return []
         return [f for f in os.listdir(saves_dir) if f.endswith(".txt")]
 
-    def save_to(self, filename: str, saves_dir: str = "saves") -> str:
+    def save_to(self, filename: str, saves_dir: str = SAVES_DIR) -> str:
         """Sérialise le FS complet dans `saves_dir/<filename>.txt`. Retourne le chemin."""
         os.makedirs(saves_dir, exist_ok=True)
         filepath = os.path.join(saves_dir, filename + ".txt")
@@ -102,7 +106,7 @@ class VirtualFS:
             json.dump(self.root, f, indent=4)
         return filepath
 
-    def load_from(self, index: int, saves_dir: str = "saves") -> str | None:
+    def load_from(self, index: int, saves_dir: str = SAVES_DIR) -> str | None:
         """Recharge le FS depuis la sauvegarde `index`. Réinitialise le chemin courant."""
         files = self.list_saves(saves_dir)
         if not (0 <= index < len(files)):

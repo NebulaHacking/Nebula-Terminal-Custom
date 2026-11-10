@@ -3,11 +3,10 @@
 Portage des branches de l'ancien main.py : ls (999), mkdir (1004), cd (1009/1014),
 kcat (940), save (852), load (856), knano (933).
 """
-import os
 
 from terminal.registry import REGISTRY
 
-SAVES_DIR = "saves"
+from Tools.virtualfs import SAVES_DIR
 
 
 # ---------------------------------------------------------------------

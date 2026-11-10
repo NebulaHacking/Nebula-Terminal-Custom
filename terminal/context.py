@@ -16,6 +16,7 @@ class Context:
     history: list[str] = field(default_factory=list)
     browser_history: list[str] = field(default_factory=list)
     should_exit: bool = False  # posé par la commande `exit` ; le REPL break dessus
+    current_user: str = "nebula"  # Utilisateur actuel
 
 
 def default_context() -> Context:

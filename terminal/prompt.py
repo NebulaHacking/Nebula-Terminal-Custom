@@ -1,19 +1,23 @@
 """Prompt style Kali (extrait de main.py lignes 465-481 et 456-461)."""
 from terminal.context import Context
-
-RESET = "\033[0m"
-GREEN = "\033[92m"
-BLUE = "\033[94m"
+from terminal.theme import get_prompt_colors
 
 
 def get_prompt(ctx: Context) -> str:
     """
-    Prompt style Kali colorisé :
-    - Crochets / parenthèses en vert, host en bleu, chemin en vert.
+    Prompt style Kali colorisé avec support des thèmes dynamiques.
+    Format : [user@nebula]-[path] compatible Windows
     """
-    host = "nebula"
+    colors = get_prompt_colors()
+    primary = colors["primary"]
+    secondary = colors["secondary"]
+    reset = colors["reset"]
+
+    user = ctx.current_user
     path_display = ctx.vfs.get_path()
 
-    line1 = f"{GREEN}┌──[{RESET}{BLUE}{host}{RESET}{GREEN}]─[{path_display}{GREEN}]{RESET}"
-    line2 = f"{GREEN}└──╼{RESET} $ "
+    # Format Kali ASCII-only pour compatibilité Windows
+    line1 = f"{primary}[{reset}{secondary}{user}@nebula{reset}{primary}]-[{reset}{path_display}{primary}]{reset}"
+    line2 = f"{primary}$ {reset}"
     return f"{line1}\n{line2}"
+

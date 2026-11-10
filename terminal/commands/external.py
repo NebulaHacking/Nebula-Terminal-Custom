@@ -156,7 +156,7 @@ def _nebulers(ctx, argv, raw):
 @REGISTRY.register("nebulaGui", help_text="nebulaGui - Lancer l'interface graphique Nebula")
 def _nebula_gui(ctx, argv, raw):
     import NebulaGui.Gui
-    NebulaGui.Gui.launch_nebula_gui()
+    NebulaGui.Gui.launch_nebula_gui(ctx)  # la GUI partage FS virtuel + historique
 
 
 @REGISTRY.register("nebula_ia", help_text="nebula_ia - L'IA du NTC (EN COURS DE DEVELOPPEMENT !!!)")

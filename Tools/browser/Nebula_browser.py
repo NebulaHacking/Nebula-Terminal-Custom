@@ -61,7 +61,7 @@ class SecurePage(QWebEnginePage):
 # --- Navigateur Nebula ---
 class NebulaBrowser:
     def __init__(self):
-        self.app = QApplication(sys.argv)
+        self.app = QApplication.instance() or QApplication(sys.argv)
 
         # Profil éphémère
         self.profile = QWebEngineProfile(parent=self.app)

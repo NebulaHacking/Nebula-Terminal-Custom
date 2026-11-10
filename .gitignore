@@ -23,7 +23,8 @@ env/
 *.pkl
 *.joblib
 
-# === Runtime Nebula ===
+# === Runtime Nebula (données locales par utilisateur) ===
+users/
 saves/
 nebula_saves.json
 coffre_base.json
@@ -47,3 +48,5 @@ Thumbs.db
 
 # === Coffre de mémoire Mind-NTC (privé, Obsidian) ===
 Mind-NTC/
+
+opencode.json

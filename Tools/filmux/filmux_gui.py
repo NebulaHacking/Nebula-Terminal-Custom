@@ -230,7 +230,7 @@ class FilmuxWindow(QMainWindow):
 
 def run_gui():
     """Lance Filmux GUI"""
-    app = QApplication(sys.argv)
+    app = QApplication.instance() or QApplication(sys.argv)
     app.setStyle("Fusion")
 
     app.setStyleSheet(f"""
@@ -239,7 +239,7 @@ def run_gui():
     """)
 
     window = FilmuxWindow()
-    sys.exit(app.exec_())
+    app.exec_()
 
 
 def main():

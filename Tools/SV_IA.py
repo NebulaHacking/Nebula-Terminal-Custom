@@ -7,10 +7,13 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 import joblib
+from pathlib import Path
 
-MODEL_PATH = "Tools/shadowviper_rf_model.pkl"
-SCALER_PATH = "Tools/shadowviper_scaler.pkl"
-FEATURES_PATH = "Tools/shadowviper_features.json"
+# Chemins absolus : marche quel que soit le dossier de lancement.
+_HERE = Path(__file__).resolve().parent
+MODEL_PATH = _HERE / "shadowviper_rf_model.pkl"
+SCALER_PATH = _HERE / "shadowviper_scaler.pkl"
+DATASET_PATH = _HERE / "dataset.json"
 
 
 def extract_features(data_dict):
@@ -34,14 +37,10 @@ def extract_features(data_dict):
     features.append(len(data_dict.get("asn", "")))
     features.append(len(data_dict.get("timezone", "")))
 
-    # Sauvegarde optionnelle du nombre de features (debug)
-    with open(FEATURES_PATH, "w") as f:
-        json.dump({"features_count": len(features)}, f)
-
     return features
 
 
-def train_shadowviper_ai(dataset_path="Tools/dataset.json"):
+def train_shadowviper_ai(dataset_path=DATASET_PATH):
     if not os.path.exists(dataset_path):
         print("[ERREUR] Aucun dataset trouvé pour l’entraînement.")
         return False
@@ -79,9 +78,11 @@ def start_phase_2(result_dict):
     """
     Lance l'inférence avec le modèle entraîné, en utilisant le dict d'infos collectées.
     """
-    if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
-        print("[ERREUR] Modèle ou scaler non trouvés, entraîne-le d’abord.")
-        return
+    # Les .pkl ne sont pas versionnés : on les régénère depuis dataset.json au premier usage.
+    if not (MODEL_PATH.exists() and SCALER_PATH.exists()):
+        print("[*] Modèle IA absent : entraînement depuis dataset.json...")
+        if not train_shadowviper_ai():
+            return
 
     scaler = joblib.load(SCALER_PATH)
     model = joblib.load(MODEL_PATH)
@@ -113,7 +114,7 @@ if __name__ == "__main__":
             print("Échec de l'entraînement.")
 
     elif choix == "2":
-        json_path = "Tools/dataset.json"
+        json_path = DATASET_PATH
 
         if not os.path.exists(json_path):
             print(f"Fichier {json_path} non trouvé, collecte des données nécessaire.")

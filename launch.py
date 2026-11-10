@@ -1,8 +1,9 @@
 # launch.py — Lanceur principal de Nebula Terminal Custom
 import os
 import sys
+import hashlib
+import shutil
 import subprocess
-import venv
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -10,6 +11,7 @@ VENV_DIR = BASE_DIR / "venv"
 REQ_FILE = BASE_DIR / "requirements.txt"
 MAIN_FILE = BASE_DIR / "main.py"
 ENV_FILE = BASE_DIR / ".env"
+STAMP_FILE = VENV_DIR / ".requirements.sha256"  # hash du dernier requirements.txt installé
 
 def load_env_file():
     """Charge le fichier .env (s'il existe) dans os.environ.
@@ -47,15 +49,25 @@ def run(cmd, **kwargs):
         print(f"[ERR] Command returned {result.returncode}")
         sys.exit(result.returncode)
 
+def venv_is_usable():
+    """Le venv existe ET son python démarre (un venv copié d'un autre PC pointe vers un python absent)."""
+    py = get_venv_python()
+    if not py.exists():
+        return False
+    try:
+        return subprocess.run([str(py), "-c", "pass"], capture_output=True, timeout=30).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
 def create_venv(python_exe=None):
     if VENV_DIR.exists():
-        print("[*] venv déjà présent.")
-        return
+        if venv_is_usable():
+            print("[*] venv déjà présent.")
+            return
+        print("[!] venv inutilisable (créé sur une autre machine ?) -> recréation.")
+        shutil.rmtree(VENV_DIR)
     print("[*] Création de l'environnement virtuel (venv)...")
-    # Utilise le python courant, sinon celui passé en argument
-    python_to_use = python_exe or sys.executable
-    # Crée le venv en appelant python -m venv pour compatibilité
-    run([python_to_use, "-m", "venv", str(VENV_DIR)])
+    run([python_exe or sys.executable, "-m", "venv", str(VENV_DIR)])
     print("[*] venv créé.")
 
 def get_venv_python():
@@ -77,12 +89,16 @@ def main():
         print("[!] Vérifie la création du venv ou utilise --python / path_to_python")
         sys.exit(1)
 
-    # 2) Installer requirements si présent
+    # 2) Installer requirements seulement s'ils ont changé depuis la dernière installation
     if REQ_FILE.exists():
-        print("[*] Installation des dépendances (depuis requirements.txt)...")
-        # Toujours appeler pip via python -m pip (plus fiable cross-platform)
-        run([python_bin, "-m", "pip", "install", "--upgrade", "pip"])
-        run([python_bin, "-m", "pip", "install", "-r", str(REQ_FILE)])
+        req_hash = hashlib.sha256(REQ_FILE.read_bytes()).hexdigest()
+        if STAMP_FILE.exists() and STAMP_FILE.read_text().strip() == req_hash:
+            print("[*] Dépendances à jour.")
+        else:
+            print("[*] Installation des dépendances (depuis requirements.txt)...")
+            run([python_bin, "-m", "pip", "install", "--upgrade", "pip"])
+            run([python_bin, "-m", "pip", "install", "-r", str(REQ_FILE)])
+            STAMP_FILE.write_text(req_hash)
     else:
         print("[!] Pas de requirements.txt trouvé (skipped).")
 

@@ -7,10 +7,14 @@ des utilitaires. Moteurs dans Tools/calculator.py et Tools/weather.py.
 from terminal.registry import REGISTRY
 
 
-@REGISTRY.register("calc", help_text="calc             - Lancer la calculatrice")
+@REGISTRY.register("calc", help_text="calc [expr]      - Calcule expr (ex: calc 2**10), sans argument : mode interactif")
 def _calc(ctx, argv, raw):
-    from Tools.calculator import calculatrice
-    calculatrice()
+    from Tools.calculator import calculatrice, calculer
+    expr = raw.split(None, 1)[1] if len(argv) > 1 else ""
+    if expr:
+        print("Résultat :", calculer(expr))
+    else:
+        calculatrice()
 
 
 @REGISTRY.register("weather", help_text="weather [ville]   - Afficher la météo d'une ville (ex: weather Paris)")

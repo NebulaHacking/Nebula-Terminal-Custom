@@ -4,12 +4,9 @@ import colorama
 from datetime import datetime
 import os
 import sys
-import pyttsx3
 import re
 import requests
 import tempfile
-import sounddevice as sd
-import soundfile as sf
 import platform
 import threading
 import time
@@ -22,7 +19,9 @@ DEFAULT_MODEL = "llama3.1:8b"
 DEFAULT_MODE = "local"
 DEFAULT_VOCAL = "OFF"  # Défault vocal ON
 DEFAULT_TTS = "local"  # Défault TTS ElevenLabs
-RESPONSE_TIMEOUT = 20  # secondes
+RESPONSE_TIMEOUT = 120  # secondes (le 1er chargement d'un modèle 8B peut être long)
+MAX_RETRIES = 2
+ONLINE_MODEL = "gpt-4o-mini"
 
 # ==================================================
 
@@ -75,13 +74,19 @@ def print_system_info():
             import psutil
             mem = round(psutil.virtual_memory().total / (1024**3))
             print(f"Memory:      {mem} GB")
-        except:
+        except ImportError:
             print("Memory:      Unknown (psutil non installé)")
     except Exception as e:
         print(f"[!] Impossible de récupérer les infos système : {e}")
 
+def _fail(msg):
+    print(colorama.Fore.RED + msg + colorama.Fore.RESET)
+    return msg
+
 # ============== TTS ENGINES =======================
 def speak_local(tts, text):
+    if tts is None:
+        return
     try:
         tts.say(text)
         tts.runAndWait()
@@ -114,6 +119,8 @@ def speak_elevenlabs(text, voice_id=None):
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as f:
                 f.write(r.content)
                 temp = f.name
+            import sounddevice as sd
+            import soundfile as sf
             data_audio, fs = sf.read(temp, dtype='float32')
             threading.Thread(target=lambda: (sd.play(data_audio, fs), sd.wait(), os.remove(temp)), daemon=True).start()
         else:
@@ -135,7 +142,7 @@ def change_voice():
             print(colorama.Fore.GREEN + f"[+] Voix changée sur {list(ELEVENLABS_VOICES.keys())[choice-1]}" + colorama.Fore.RESET)
         else:
             print(colorama.Fore.RED + "[!] Choix invalide." + colorama.Fore.RESET)
-    except:
+    except ValueError:
         print(colorama.Fore.RED + "[!] Entrée invalide." + colorama.Fore.RESET)
 
 # ================= IA CLASS ========================
@@ -157,74 +164,48 @@ class NebulaIA:
 
     # ---- LOCAL OLLAMA ----
     def ask_local(self, prompt):
-        try:
+        """Une requête Ollama, relancée au plus MAX_RETRIES fois (avant : récursion infinie)."""
+        for attempt in range(1, MAX_RETRIES + 1):
             print(colorama.Fore.YELLOW + "thinking...")
-            p = subprocess.Popen(
-                ["ollama", "run", self.model],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding="utf-8"
-            )
-            p.stdin.write(prompt + "\n")
-            p.stdin.close()
-
-            start_time = time.time()
-            output = ""
-            while True:
-                line = p.stdout.readline()
-                if line:
-                    output += line
-                elif p.poll() is not None:
-                    break
-                if time.time() - start_time > RESPONSE_TIMEOUT:
-                    print(colorama.Fore.RED + "[!] Timeout local, relance..." + colorama.Fore.RESET)
-                    return self.ask_local(prompt)
-
-            if not output.strip():
-                print(colorama.Fore.RED + "[!] Réponse vide, relance..." + colorama.Fore.RESET)
-                return self.ask_local(prompt)
-
-            print(colorama.Fore.GREEN + output + colorama.Fore.RESET)
-            return output.strip()
-
-        except FileNotFoundError:
-            msg = "[!] Ollama non trouvé. Installer avec 'nebula_ia_install'."
-            print(colorama.Fore.RED + msg + colorama.Fore.RESET)
-            return msg
-        except Exception as e:
-            msg = f"[!] Erreur locale : {e}"
-            print(colorama.Fore.RED + msg + colorama.Fore.RESET)
-            return msg
+            try:
+                p = subprocess.run(
+                    ["ollama", "run", self.model], input=prompt + "\n",
+                    capture_output=True, text=True, encoding="utf-8", timeout=RESPONSE_TIMEOUT,
+                )
+            except FileNotFoundError:
+                return _fail("[!] Ollama non trouvé. Installer avec 'nebula_ia_install'.")
+            except subprocess.TimeoutExpired:  # subprocess.run tue le process lui-même
+                print(colorama.Fore.RED + f"[!] Timeout local ({attempt}/{MAX_RETRIES})" + colorama.Fore.RESET)
+                continue
+            output = p.stdout.strip()
+            if output:
+                print(colorama.Fore.GREEN + output + colorama.Fore.RESET)
+                return output
+            err = p.stderr.strip()
+            print(colorama.Fore.RED + f"[!] Réponse vide ({attempt}/{MAX_RETRIES}) {err[:200]}" + colorama.Fore.RESET)
+        return _fail("[!] Pas de réponse d'Ollama.")
 
     # ---- ONLINE OPENAI ----
     def ask_online(self, prompt):
         key = os.getenv("OPENAI_API_KEY")
         if not key:
-            msg = "[!] Aucune clé OPENAI_API_KEY trouvée."
-            print(colorama.Fore.RED + msg + colorama.Fore.RESET)
-            return msg
-
-        start_time = time.time()
-        while True:
+            return _fail("[!] Aucune clé OPENAI_API_KEY trouvée.")
+        headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+        data = {"model": ONLINE_MODEL, "messages": [{"role": "user", "content": prompt}]}
+        for attempt in range(1, MAX_RETRIES + 1):
             try:
-                headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
-                data = {"model": "gpt-3.5-turbo", "messages": [{"role": "user", "content": prompt}]}
-                r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data, timeout=10)
-                result = r.json()
-                response = result.get("choices", [{}])[0].get("message", {}).get("content", "")
-                if response.strip():
-                    print(colorama.Fore.CYAN + response + colorama.Fore.RESET)
-                    return response.strip()
-                if time.time() - start_time > RESPONSE_TIMEOUT:
-                    print(colorama.Fore.RED + "[!] Timeout online, relance..." + colorama.Fore.RESET)
-                    return self.ask_online(prompt)
-            except Exception as e:
-                if time.time() - start_time > RESPONSE_TIMEOUT:
-                    print(colorama.Fore.RED + f"[!] Erreur online persistante : {e}, relance..." + colorama.Fore.RESET)
-                    return self.ask_online(prompt)
-                time.sleep(1)
+                r = requests.post("https://api.openai.com/v1/chat/completions",
+                                  headers=headers, json=data, timeout=RESPONSE_TIMEOUT)
+            except requests.RequestException as e:
+                print(colorama.Fore.RED + f"[!] Erreur réseau ({attempt}/{MAX_RETRIES}) : {e}" + colorama.Fore.RESET)
+                continue
+            if r.status_code != 200:  # clé invalide, quota… : inutile de réessayer
+                return _fail(f"[!] Erreur OpenAI ({r.status_code}) : {r.text[:200]}")
+            response = r.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+            if response:
+                print(colorama.Fore.CYAN + response + colorama.Fore.RESET)
+                return response
+        return _fail("[!] Pas de réponse d'OpenAI.")
 
     def ask(self, text, mode):
         self.history.append({"user": text})
@@ -249,8 +230,13 @@ def launch():
     nebula = NebulaIA(state["model"])
     nebula.history = state["history"]
 
-    tts = pyttsx3.init()
-    tts.setProperty("rate", 220)
+    try:
+        import pyttsx3
+        tts = pyttsx3.init()
+        tts.setProperty("rate", 220)
+    except Exception as e:  # pas de moteur vocal : le chat texte reste utilisable
+        print(colorama.Fore.RED + f"[!] TTS local indisponible : {e}" + colorama.Fore.RESET)
+        tts = None
 
     print(colorama.Fore.MAGENTA + "\n=== NEBULA AI  ===\n")
     print("")
@@ -291,7 +277,7 @@ def launch():
                     print("Historique vidé.")
                     try:
                         os.remove(SAVE_FILE)
-                    except:
+                    except FileNotFoundError:
                         pass
                 elif c == "6":
                     print("Messages générés:", state["stats"]["count"])
