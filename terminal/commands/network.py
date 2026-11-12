@@ -11,16 +11,15 @@ from Tools.portscan import scan_ports
 from Tools.iptracker import live_ip_tracker, show_map_with_positions
 
 
-SCAN_HELP = """ -- Scan v1.0 --
+SCAN_HELP = """ -- Scan v1.1 --
 
 Syntaxe :
-   -f [IP]  : analyse rapide des ports
-   -a [IP]  : analyse de tous les ports
-   -s [IP]  : analyse discrète des ports
+   scan [IP] [min] [max]  : ports 1-1024 (ou la plage donnée)
+   -f [IP] [min] [max]    : analyse rapide
+   -a [IP]                : tous les ports (1-65535, ~1 à 2 minutes)
+   -s [IP]                : analyse discrète (lente : une connexion à la fois)
 
-Hotkeys :
-   q        - Stop scan
-   r        - Statistiques restantes
+Ctrl+C arrête le scan.
 """
 
 @REGISTRY.register("scan", help_text=SCAN_HELP, summary="Analyse des ports ouverts (-f rapide, -a tous, -s discret)")
@@ -47,17 +46,16 @@ def _scan(ctx, argv, raw):
                    port_min=port_min, port_max=port_max)
 
 
-IPT_HELP = """ -- IPTracker v1.0 --
+IPT_HELP = """ -- IPTracker v1.1 --
 
-Hotkeys :
-   q        - Stop track
+   iptracker <IP ou domaine>  : pays, ville, fournisseur, proxy/VPN, hébergeur
+   iptracker -c <IP>          : suivi continu (Ctrl+C pour arrêter)
+   iptracker -m <IP>          : carte « moi / cible » (fichier HTML)
 
-Options :
-   -c [IP]  : scan continu
-   -m [IP]  : affiche une carte avec infos IP cible et utilisateur
+Position approximative (base publique ip-api.com) : ville au mieux, jamais une adresse.
 """
 
-@REGISTRY.register("iptracker", help_text=IPT_HELP, summary="Tracker IP (-c continu, -m carte folium)")
+@REGISTRY.register("iptracker", help_text=IPT_HELP, summary="Infos publiques d'une IP : pays, fournisseur, proxy (-c continu, -m carte)")
 def _iptracker(ctx, argv, raw):
     if len(argv) < 2:
         print("Usage : iptracker -m <IP_cible>")
@@ -70,10 +68,16 @@ def _iptracker(ctx, argv, raw):
         my_ip = requests.get("https://api.ipify.org").text
         show_map_with_positions(my_ip, target_ip)
     else:
-        live_ip_tracker(argv[1])
+        from terminal.blocks import print_blocks
+        from Tools.iptracker import ip_blocks
+        print_blocks(ip_blocks(argv[1]))
 
 
 @REGISTRY.register("ping", help_text="ping <ip/url>    - Ping d'une IP ou URL")
 def _ping(ctx, argv, raw):
     from Tools.ping.ping import run_ping_command
+    from terminal import events
+    # Dashboard ou Nebula IA : personne ne peut faire Ctrl+C, donc pas de ping infini.
+    if getattr(events.local, "quiet", False) and not {"-c", "--count"} & set(argv):
+        raw += " -c 4"
     run_ping_command(raw)

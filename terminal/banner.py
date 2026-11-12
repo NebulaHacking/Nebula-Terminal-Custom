@@ -8,10 +8,10 @@ import os
 import platform
 import socket
 
-from colorama import Fore
 
 from Tools.sysinfo import get_gpu, get_packages, get_resolution, get_uptime
-from terminal.theme import get_prompt_colors
+from terminal import __version__
+from terminal.theme import get_prompt_colors, paint, banner_colors
 
 
 def show_nebula() -> None:
@@ -55,11 +55,11 @@ def show_nebula() -> None:
         memory = "N/A"
 
     info_labels = [
-        "User:", "OS:", "Kernel:", "Uptime:", "Packages:",
+        "Nebula:", "User:", "OS:", "Kernel:", "Uptime:", "Packages:",
         "Shell:", "Resolution:", "Terminal:", "CPU:", "GPU:", "Memory:"
     ]
     info_values = [
-        f"{user}@{host}", os_info, kernel, uptime, packages,
+        f"v{__version__}", f"{user}@{host}", os_info, kernel, uptime, packages,
         shell, resolution, terminal, cpu, gpu, memory
     ]
 
@@ -71,6 +71,8 @@ def show_nebula() -> None:
     while len(info_values) < max_lines:
         info_values.append("")
 
+    grad = banner_colors()  # le logo suit le dégradé du thème, ligne par ligne
+    nebula_logo = [l.replace(primary, grad[min(i * len(grad) // max_lines, len(grad) - 1)]) for i, l in enumerate(nebula_logo)]
     for i in range(max_lines):
         print(f"{nebula_logo[i]:<20} {secondary}{info_labels[i]:<12}{reset} {primary}{info_values[i]}{reset}")
 
@@ -101,7 +103,7 @@ def affichage_nebula() -> None:
         \/____/                  \/____/                  ~~                       ~~                       \/____/          \/____/
 
     """
-    print(Fore.LIGHTRED_EX + nebula_ascii)
+    print(paint(nebula_ascii))
 
 
 def affichage_scan() -> None:
@@ -120,4 +122,49 @@ ___|    \|   | ||    |  |____||    |__|    | |     \  |    |
     '    '          '   )/       '      '       '       '
                         '
     """
-    print(Fore.WHITE + scan_ascii)
+    print(paint(scan_ascii))
+
+
+# ---------------------------------------------------------------------
+# Bannières des outils qui n'en avaient pas (police « ANSI Shadow »)
+# ---------------------------------------------------------------------
+_FONT = {
+    "A": [" █████╗ ", "██╔══██╗", "███████║", "██╔══██║", "██║  ██║", "╚═╝  ╚═╝"],
+    "B": ["██████╗ ", "██╔══██╗", "██████╔╝", "██╔══██╗", "██████╔╝", "╚═════╝ "],
+    "C": [" ██████╗", "██╔════╝", "██║     ", "██║     ", "╚██████╗", " ╚═════╝"],
+    "D": ["██████╗ ", "██╔══██╗", "██║  ██║", "██║  ██║", "██████╔╝", "╚═════╝ "],
+    "E": ["███████╗", "██╔════╝", "█████╗  ", "██╔══╝  ", "███████╗", "╚══════╝"],
+    "F": ["███████╗", "██╔════╝", "█████╗  ", "██╔══╝  ", "██║     ", "╚═╝     "],
+    "G": [" ██████╗ ", "██╔════╝ ", "██║  ███╗", "██║   ██║", "╚██████╔╝", " ╚═════╝ "],
+    "I": ["██╗", "██║", "██║", "██║", "██║", "╚═╝"],
+    "N": ["███╗   ██╗", "████╗  ██║", "██╔██╗ ██║", "██║╚██╗██║", "██║ ╚████║", "╚═╝  ╚═══╝"],
+    "O": [" ██████╗ ", "██╔═══██╗", "██║   ██║", "██║   ██║", "╚██████╔╝", " ╚═════╝ "],
+    "Q": [" ██████╗ ", "██╔═══██╗", "██║   ██║", "██║▄▄ ██║", "╚██████╔╝", " ╚══▀▀═╝ "],
+    "R": ["██████╗ ", "██╔══██╗", "██████╔╝", "██╔══██╗", "██║  ██║", "╚═╝  ╚═╝"],
+    "T": ["████████╗", "╚══██╔══╝", "   ██║   ", "   ██║   ", "   ██║   ", "   ╚═╝   "],
+    "L": ["██╗     ", "██║     ", "██║     ", "██║     ", "███████╗", "╚══════╝"],
+    "U": ["██╗   ██╗", "██║   ██║", "██║   ██║", "██║   ██║", "╚██████╔╝", " ╚═════╝ "],
+    "V": ["██╗   ██╗", "██║   ██║", "██║   ██║", "╚██╗ ██╔╝", " ╚████╔╝ ", "  ╚═══╝  "],
+    "W": ["██╗    ██╗", "██║    ██║", "██║ █╗ ██║", "██║███╗██║", "╚███╔███╔╝", " ╚══╝╚══╝ "],
+    "X": ["██╗  ██╗", "╚██╗██╔╝", " ╚███╔╝ ", " ██╔██╗ ", "██╔╝ ██╗", "╚═╝  ╚═╝"],
+    " ": ["   "] * 6,
+}
+
+
+def big(text: str) -> str:
+    """`big("DIRB")` -> 6 lignes de grandes lettres (seules les lettres de _FONT existent)."""
+    return "\n".join("".join(_FONT[c][row] for c in text.upper()) for row in range(6))
+
+
+def tool_banner(word: str, subtitle: str = "") -> None:
+    """Bannière d'un outil, au dégradé du thème. Rien avec --json, ni depuis le dashboard ou Nebula IA
+    (sortie capturée : la bannière n'y servirait à rien). Console sans Unicode : texte simple."""
+    from terminal import blocks, events
+
+    if getattr(blocks.local, "json", False) or getattr(events.local, "quiet", False):
+        return
+    art = "\n" + big(word) + (f"\n  {subtitle}" if subtitle else "") + "\n"
+    try:
+        print(paint(art))
+    except UnicodeEncodeError:
+        print(f"== {word} ==" + (f"  {subtitle}" if subtitle else ""))

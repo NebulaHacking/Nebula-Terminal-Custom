@@ -1,4 +1,4 @@
-"""Commandes système (M4) — rm, clean, tools.
+"""Commandes système (M4) — exec, clean, tools.
 
 Portage des branches de l'ancien main.py : rm (1131-1138), clean (864-869),
 tools (967-990). Moteurs dans Tools/systemtools.py et Tools/toolstxt.py.
@@ -7,25 +7,24 @@ from terminal.registry import REGISTRY
 
 
 @REGISTRY.register(
-    "rm",
-    aliases=("exec",),
+    "exec",
+    aliases=("!",),
+    summary="Lancer une vraie commande système (cmd.exe / sh)",
     help_text=(
-        "rm <commande>    - Exécuter une commande SYSTÈME RÉELLE (alias : exec)\n"
+        "exec <commande>    - Exécuter une commande SYSTÈME RÉELLE (alias : !)\n"
         "\n"
-        "⚠  Ce n'est PAS 'remove' : la commande est passée telle quelle au shell\n"
-        "   (cmd.exe / sh). Exemple : rm dir C:\\Users\n"
-        "   Pour supprimer un fichier VIRTUEL, utilisez le FS virtuel à la place."
+        "La commande est passée telle quelle au shell (cmd.exe sous Windows, sh sous Linux).\n"
+        "Exemples : exec ipconfig    |    ! dir C:\\Users\n"
+        "Pour supprimer un fichier de l'espace de travail Nebula : rm <fichier>"
     ),
 )
-def _rm(ctx, argv, raw):
+def _exec(ctx, argv, raw):
     from Tools.systemtools import execute_command_real
 
     if len(argv) < 2:
-        print("Syntaxe => rm 'commande'  (ou exec 'commande')")
+        print("Usage : exec <commande système>")
         return
-    print("Passage en mode réel")
-    commande = " ".join(argv[1:])  # recolle tout ce qui vient après 'rm'
-    execute_command_real(commande)
+    execute_command_real(raw.split(None, 1)[1])
 
 
 @REGISTRY.register("clean", help_text="clean            - netoie le system")

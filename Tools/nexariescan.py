@@ -296,6 +296,31 @@ def run_scan(target,
     return results
 
 
+def scan_blocks(target, delay=0.5, max_pages=50, post=False):
+    """Scan en blocs (terminal, dashboard, --json, Nebula IA). GET seulement, sauf post=True."""
+    root = logging.getLogger()
+    level = root.level
+    root.setLevel(logging.ERROR)  # pas de journal sur la console : tout est dans les blocs
+    try:
+        r = run_scan(target, delay=delay, max_pages=max_pages, safe_only=not post)
+    finally:
+        root.setLevel(level)
+    links, forms = r["xss_in_links"], r["xss_in_forms"]
+    total = len(links) + len(forms)
+    notes = ([["bad", f"{total} entrée(s) renvoient le code injecté sans l'échapper (XSS réfléchi probable)"]] if total
+             else [["ok", "Aucune réflexion XSS détectée sur les pages parcourues"]])
+    if not post:
+        notes.append(["info", "Formulaires POST non testés (option --post pour les inclure)"])
+    return [{"title": "Résumé", "kv": [["Cible", r["scanned_target"]], ["Pages trouvées", str(r["links_found"])],
+                                       ["Paramètres d'URL testés", str(r["tested_links_count"])],
+                                       ["Formulaires testés", str(r["tested_forms_count"])]]},
+            {"notes": notes},
+            {"title": "XSS dans les paramètres d'URL", "cols": ["URL injectée"], "rows": [[l] for l in links]},
+            {"title": "XSS dans les formulaires", "cols": ["Page", "Action"],
+             "rows": [[f["page"], str(f["form_action"] or "(même page)")] for f in forms]},
+            {"title": "Pages parcourues", "cols": ["URL"], "rows": [[l] for l in r["target_links"][:200]]}]
+
+
 def _cli_main():
     parser = argparse.ArgumentParser(description=f"{__tool_name__} — simple educational XSS scanner.")
     parser.add_argument('-t', '--target', required=True, help='Target URL (e.g. https://example.com)')

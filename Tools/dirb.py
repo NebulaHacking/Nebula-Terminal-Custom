@@ -1,16 +1,25 @@
+"""dirb — recherche de répertoires et fichiers cachés sur un site web (en parallèle).
 
-import os
-import requests
+À n'utiliser que sur des sites que vous possédez ou êtes autorisé à tester.
+"""
+import secrets
 import sys
-import glob
-import keyboard
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+import requests
+
+WORDLIST_DIR = Path(__file__).resolve().parent.parent / "DirbWordListe"
+WORKERS = 20
+# Codes qui prouvent que le chemin existe (401/403 = existe mais protégé), avec leur couleur.
+_INTERESTING = {200: "\033[92m", 204: "\033[92m", 301: "\033[96m", 302: "\033[96m", 307: "\033[96m",
+                308: "\033[96m", 401: "\033[93m", 403: "\033[91m", 405: "\033[93m", 500: "\033[95m"}
 
 # Mini wordlist si -m
 mots_minimal = ["admin", "login", "dashboard", "config", "test", "server",
                 "panel", "secret", "backup", "old"]
 
 # Wordlist par défaut (fallback si baseWord.txt introuvable).
-# Fusion de `mots_dirb_base`, liste morte de l'ancien main.py (lignes 54-67).
 DEFAULT_WORDLIST = [
     "login", "dashboard", "config", "backup", "admin", "test", "uploads", "images",
     "js", "css", "includes", "api", "server-status", "data", "private", "tmp", "db",
@@ -26,97 +35,83 @@ DEFAULT_WORDLIST = [
     "index.php", "main", "core_old", "vulnerable", "exposed"
 ]
 
+
+def _lire_wordlist(chemin) -> list[str]:
+    with open(chemin, "r", encoding="utf-8", errors="ignore") as f:
+        return [l.strip() for l in f if l.strip() and not l.startswith("#")]
+
+
 def dirb(url_base, minimal=False, wordlist=None):
     """
-    Scan de répertoires basique.
+    Scan de répertoires, WORKERS requêtes en parallèle. Ctrl+C pour arrêter.
     - minimal=True : utilise la mini-liste intégrée
-    - wordlist=chemin_fichier : utilise un fichier wordlist spécifique
+    - wordlist=chemin_fichier : fichier donné (cherché aussi dans DirbWordListe/)
     - sinon : DirbWordListe/baseWord.txt, avec fallback DEFAULT_WORDLIST
+    Renvoie la liste des URL trouvées (codes 200/204).
     """
-    url_valide = []
-    testés = 0
-    trouvés = 0
-
-    # Ajouter le http:// si absent
     if not url_base.startswith(("http://", "https://")):
         url_base = "http://" + url_base
+    url_base = url_base.rstrip("/")
 
-    # Sélection de la liste de mots
     if minimal:
         mots = mots_minimal
     elif wordlist:
-        mots = []
-        # Vérifie si le fichier existe à l'emplacement donné
-        if os.path.exists(wordlist):
-            with open(wordlist, "r", encoding="utf-8") as f:
-                mots = [ligne.strip() for ligne in f if ligne.strip()]
-        else:
-            # Recherche automatiquement dans tous les dossiers DirbWordListe
-            fichiers_trouves = glob.glob(os.path.join(os.getcwd(), "**", "DirbWordListe", os.path.basename(wordlist)), recursive=True)
-            if fichiers_trouves:
-                wordlist = fichiers_trouves[0]  # On prend le premier trouvé
-                with open(wordlist, "r", encoding="utf-8") as f:
-                    mots = [ligne.strip() for ligne in f if ligne.strip()]
-            else:
-                print(f"Fichier introuvable : {wordlist}")
-                return
+        chemin = next((c for c in (Path(wordlist), WORDLIST_DIR / Path(wordlist).name) if c.is_file()), None)
+        if chemin is None:
+            print(f"Fichier introuvable : {wordlist}")
+            return []
+        mots = _lire_wordlist(chemin)
     else:
-        # Par défaut : baseWord.txt si trouvé, sinon DEFAULT_WORDLIST (anc. mots_dirb_base)
-        mots = None
-        fichiers_trouves = glob.glob(os.path.join(os.getcwd(), "**", "DirbWordListe", "baseWord.txt"), recursive=True)
-        if fichiers_trouves:
-            with open(fichiers_trouves[0], "r", encoding="utf-8") as f:
-                mots = [ligne.strip() for ligne in f if ligne.strip()]
-        if not mots:
-            mots = list(DEFAULT_WORDLIST)
+        base = WORDLIST_DIR / "baseWord.txt"
+        mots = (_lire_wordlist(base) if base.is_file() else []) or list(DEFAULT_WORDLIST)
+    mots = list(dict.fromkeys(mots))  # sans doublons, ordre conservé
 
-    total = len(mots)
-    print(f"--- Scan DIRB démarré sur {url_base} ---")
-    print(f"Total de mots à tester : {total}\n")
+    session = requests.Session()
+    session.headers["User-Agent"] = "Mozilla/5.0 (Nebula dirb)"
 
-    for mot in mots:
-        # Vérifie si l'utilisateur appuie sur "q" pour quitter
-        if keyboard.is_pressed("q"):
-            print("\n\033[93mScan interrompu par l'utilisateur.\033[0m")
-            break
-
-        url = f"{url_base.rstrip('/')}/{mot}"
-        testés += 1
+    def tester(mot):
         try:
-            r = requests.get(url, timeout=5)
-            if r.status_code == 200:
-                print(f"\033[92m[200] Trouvé : {url}\033[0m")  # Vert
-                url_valide.append(url)
-                trouvés += 1
-            elif r.status_code == 403:
-                print(f"\033[91m[403] Accès refusé : {url}\033[0m")  # Rouge
-            else:
-                print(f"[{r.status_code}] {url}")
-        except Exception:
-            print(f"[!] Erreur de connexion avec {url}")
+            r = session.get(f"{url_base}/{mot.lstrip('/')}", timeout=5, allow_redirects=False)
+            return mot, r.status_code, len(r.content)
+        except requests.RequestException:
+            return mot, None, 0
 
-        # Afficher stats si l'utilisateur appuie sur "r"
-        if keyboard.is_pressed("r"):
-            print(f"\n\033[96m--- STATS DU SCAN ---")
-            print(f"Testés   : {testés}/{total}")
-            print(f"Trouvés  : {trouvés} -> {url_valide}")
-            print(f"Restants : {total - testés}")
-            print(f"---------------------\033[0m\n")
+    # Un chemin qui ne peut pas exister : s'il répond comme une vraie page, le site renvoie
+    # la même chose pour tout (« soft 404 ») et on ignore les réponses de ce code.
+    _, code_faux, _ = tester(f"nebula-{secrets.token_hex(8)}")
+    if code_faux is None:
+        print(f"[!] Impossible de joindre {url_base}")
+        return []
+    ignorer = code_faux if code_faux in _INTERESTING else None
+    if ignorer:
+        print(f"[!] Le site répond {ignorer} même pour une page inexistante : les réponses {ignorer} sont ignorées.")
 
-    print(f"\n--- Scan terminé : {trouvés} trouvés sur {testés} tests ---")
-    if url_valide:
-        print("URLs valides :", url_valide)
+    print(f"--- Scan DIRB démarré sur {url_base} ---")
+    print(f"Total de mots à tester : {len(mots)}  ({WORKERS} requêtes en parallèle, Ctrl+C pour arrêter)\n")
 
+    url_valide, testés, erreurs = [], 0, 0
+    pool = ThreadPoolExecutor(WORKERS)
+    try:
+        for mot, code, taille in pool.map(tester, mots):
+            testés += 1
+            if code is None:
+                erreurs += 1
+            elif code in _INTERESTING and code != ignorer:
+                print(f"{_INTERESTING[code]}[{code}] {url_base}/{mot}\033[0m  ({taille} octets)")
+                if code in (200, 204):
+                    url_valide.append(f"{url_base}/{mot}")
+    except KeyboardInterrupt:
+        print("\n\033[93mScan interrompu par l'utilisateur.\033[0m")
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
+
+    print(f"\n--- Scan terminé : {len(url_valide)} trouvés sur {testés} tests"
+          + (f", {erreurs} erreurs de connexion" if erreurs else "") + " ---")
     return url_valide
 
 
 def main():
-    """
-    Gestion des arguments en ligne de commande :
-    -m : mini wordlist
-    -w <fichier> : wordlist personnalisée
-    <url> : site à scanner
-    """
+    """Ligne de commande : python dirb.py [-m] [-w wordlist] <url>"""
     minimal = False
     wordlist = None
     url = None
@@ -141,6 +136,5 @@ def main():
     dirb(url, minimal=minimal, wordlist=wordlist)
 
 
-# Exécution si lancé directement
 if __name__ == "__main__":
     main()

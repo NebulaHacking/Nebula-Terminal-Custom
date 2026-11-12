@@ -14,11 +14,13 @@ _COLOR_ALLOWED = ("0", "2", "3", "4")  # 0=reset, 2=vert, 3=cyan, 4=rouge
 def execute_command_real(cmd: str) -> None:
     """Exécute `cmd` dans le vrai shell et affiche stdout/stderr."""
     try:
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        from Tools.recon import console_text  # accents corrects sous Windows (page de code de la console)
+
+        result = subprocess.run(cmd, shell=True, capture_output=True)
         if result.stdout:
-            print(result.stdout)
+            print(console_text(result.stdout))
         if result.stderr:
-            print(result.stderr)
+            print(console_text(result.stderr))
     except Exception as e:
         print("Erreur :", e)
 

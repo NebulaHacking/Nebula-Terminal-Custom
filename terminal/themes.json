@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "description": "Themes pour Nebula Terminal Custom",
   "default": "micha",
   "themes": {
@@ -24,8 +24,17 @@
         "input_bg": "#2d2d2d",
         "item_bg": "#1a1a1a",
         "item_selected": "#0078d4",
-        "item_hover": "#2d2d2d"
-      }
+        "item_hover": "#2d2d2d",
+        "accent": "#00d4ff"
+      },
+      "banner": [
+        46,
+        47,
+        48,
+        49,
+        50,
+        51
+      ]
     },
     "redark": {
       "name": "Redark",
@@ -48,7 +57,220 @@
         "input_bg": "#2d0000",
         "item_bg": "#0d0d0d",
         "item_selected": "#cc0000",
-        "item_hover": "#2d0000"
+        "item_hover": "#2d0000",
+        "accent": "#ff3333"
+      },
+      "banner": [
+        203,
+        197,
+        196,
+        160,
+        124,
+        88
+      ]
+    },
+    "cyberpunk": {
+      "name": "Cyberpunk",
+      "description": "Néon rose et cyan, ambiance Night City",
+      "prompt": {
+        "primary": "[38;5;201m",
+        "secondary": "[38;5;51m",
+        "accent": "[38;5;213m",
+        "reset": "[0m"
+      },
+      "rich": {
+        "border_style": "color(201)",
+        "title_style": "bold color(213)"
+      },
+      "banner": [
+        201,
+        200,
+        165,
+        129,
+        93,
+        63,
+        45,
+        51
+      ],
+      "gui": {
+        "background": "#0d0221",
+        "primary": "#ff2bd6",
+        "accent": "#ff2bd6",
+        "secondary": "#1e1e1e",
+        "text": "#e0e0e0",
+        "input_bg": "#2d2d2d",
+        "item_bg": "#1a1a1a",
+        "item_selected": "#ff2bd6",
+        "item_hover": "#2d2d2d"
+      }
+    },
+    "matrix": {
+      "name": "Matrix",
+      "description": "Pluie de code verte, du sombre au vif",
+      "prompt": {
+        "primary": "[38;5;46m",
+        "secondary": "[38;5;34m",
+        "accent": "[38;5;82m",
+        "reset": "[0m"
+      },
+      "rich": {
+        "border_style": "color(46)",
+        "title_style": "bold color(82)"
+      },
+      "banner": [
+        22,
+        28,
+        34,
+        40,
+        46,
+        82,
+        118
+      ],
+      "gui": {
+        "background": "#000000",
+        "primary": "#00ff41",
+        "accent": "#00ff41",
+        "secondary": "#1e1e1e",
+        "text": "#e0e0e0",
+        "input_bg": "#2d2d2d",
+        "item_bg": "#1a1a1a",
+        "item_selected": "#00ff41",
+        "item_hover": "#2d2d2d"
+      }
+    },
+    "ocean": {
+      "name": "Ocean",
+      "description": "Bleus profonds vers turquoise",
+      "prompt": {
+        "primary": "[38;5;39m",
+        "secondary": "[38;5;25m",
+        "accent": "[38;5;51m",
+        "reset": "[0m"
+      },
+      "rich": {
+        "border_style": "color(39)",
+        "title_style": "bold color(51)"
+      },
+      "banner": [
+        17,
+        18,
+        19,
+        25,
+        31,
+        37,
+        44,
+        51
+      ],
+      "gui": {
+        "background": "#03111f",
+        "primary": "#1e90ff",
+        "accent": "#1e90ff",
+        "secondary": "#1e1e1e",
+        "text": "#e0e0e0",
+        "input_bg": "#2d2d2d",
+        "item_bg": "#1a1a1a",
+        "item_selected": "#1e90ff",
+        "item_hover": "#2d2d2d"
+      }
+    },
+    "sunset": {
+      "name": "Sunset",
+      "description": "Coucher de soleil : jaune, orange, rose",
+      "prompt": {
+        "primary": "[38;5;208m",
+        "secondary": "[38;5;205m",
+        "accent": "[38;5;220m",
+        "reset": "[0m"
+      },
+      "rich": {
+        "border_style": "color(208)",
+        "title_style": "bold color(220)"
+      },
+      "banner": [
+        226,
+        220,
+        214,
+        208,
+        202,
+        198,
+        163
+      ],
+      "gui": {
+        "background": "#1a0b10",
+        "primary": "#ff8700",
+        "accent": "#ff8700",
+        "secondary": "#1e1e1e",
+        "text": "#e0e0e0",
+        "input_bg": "#2d2d2d",
+        "item_bg": "#1a1a1a",
+        "item_selected": "#ff8700",
+        "item_hover": "#2d2d2d"
+      }
+    },
+    "dracula": {
+      "name": "Dracula",
+      "description": "Violet et rose pastel sur fond sombre",
+      "prompt": {
+        "primary": "[38;5;141m",
+        "secondary": "[38;5;212m",
+        "accent": "[38;5;117m",
+        "reset": "[0m"
+      },
+      "rich": {
+        "border_style": "color(141)",
+        "title_style": "bold color(117)"
+      },
+      "banner": [
+        141,
+        135,
+        171,
+        177,
+        212,
+        218
+      ],
+      "gui": {
+        "background": "#1e1f29",
+        "primary": "#bd93f9",
+        "accent": "#bd93f9",
+        "secondary": "#1e1e1e",
+        "text": "#e0e0e0",
+        "input_bg": "#2d2d2d",
+        "item_bg": "#1a1a1a",
+        "item_selected": "#bd93f9",
+        "item_hover": "#2d2d2d"
+      }
+    },
+    "nord": {
+      "name": "Nord",
+      "description": "Bleus nordiques doux, reposant pour les yeux",
+      "prompt": {
+        "primary": "[38;5;110m",
+        "secondary": "[38;5;152m",
+        "accent": "[38;5;108m",
+        "reset": "[0m"
+      },
+      "rich": {
+        "border_style": "color(110)",
+        "title_style": "bold color(108)"
+      },
+      "banner": [
+        67,
+        68,
+        110,
+        109,
+        152,
+        189
+      ],
+      "gui": {
+        "background": "#2e3440",
+        "primary": "#88c0d0",
+        "accent": "#88c0d0",
+        "secondary": "#1e1e1e",
+        "text": "#e0e0e0",
+        "input_bg": "#2d2d2d",
+        "item_bg": "#1a1a1a",
+        "item_selected": "#88c0d0",
+        "item_hover": "#2d2d2d"
       }
     }
   }

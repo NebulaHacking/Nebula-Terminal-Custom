@@ -8,3 +8,9 @@ from terminal.commands import network  # noqa: F401
 from terminal.commands import system  # noqa: F401
 from terminal.commands import misc  # noqa: F401
 from terminal.commands import external  # noqa: F401
+from terminal.commands import crypto  # noqa: F401
+from terminal.commands import recon  # noqa: F401
+from terminal.commands import mission  # noqa: F401
+from terminal.commands import analysis  # noqa: F401
+from terminal.commands import shell  # noqa: F401
+from terminal.commands import ia  # noqa: F401

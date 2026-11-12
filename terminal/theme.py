@@ -120,6 +120,31 @@ def get_terminal_colors() -> Dict[str, str]:
     }
 
 
+
+def banner_colors() -> list[str]:
+    """Dégradé du thème (codes ANSI 256 couleurs), du haut vers le bas des bannières."""
+    codes = get_theme().get("banner") or []
+    return [f"\033[38;5;{c}m" for c in codes] or [get_prompt_colors()["primary"]]
+
+
+def paint(text: str, theme_name: str | None = None) -> str:
+    """Applique le dégradé vertical du thème à un texte multiligne (bannières ASCII des outils)."""
+    if theme_name:
+        codes = _load_themes().get(theme_name, {}).get("banner") or []
+        colors = [f"\033[38;5;{c}m" for c in codes] or banner_colors()
+    else:
+        colors = banner_colors()
+    lines = text.split("\n")
+    step = len(colors) / max(len(lines), 1)
+    return "\n".join(colors[min(int(i * step), len(colors) - 1)] + line for i, line in enumerate(lines)) + "\033[0m"
+
+
+def swatch(theme_name: str) -> str:
+    """Barre de couleurs du thème, pour l'aperçu de `theme`."""
+    codes = _load_themes().get(theme_name, {}).get("banner") or []
+    return "".join(f"\033[38;5;{c}m██" for c in codes) + "\033[0m"
+
+
 # Alias pour compatibilite
 def get_border_style() -> str:
     return get_rich_style()["border_style"]

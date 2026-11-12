@@ -1,41 +1,22 @@
+"""ShadowViper — collecte d'informations sur une IP, un domaine, une URL, un ASN ou un e-mail.
+
+`investigate(valeur)` renvoie des blocs (terminal, dashboard, --json, Nebula IA).
+Sources : ip-api.com, ipinfo.io, RIPEstat (ASN), WHOIS du domaine, DNS, ports courants, ping/traceroute,
+puis le modèle local (Tools/SV_IA, scikit-learn) s'il est installé.
+"""
+import contextlib
+import io
 import ipaddress
-from urllib.parse import urlparse
 import re
 import socket
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import urlparse
+
 import requests
-import whois
-import json
-import math
-from datetime import datetime
-from colorama import Fore, Style, init
-init(autoreset=True)
-from Tools.SV_IA import start_phase_2
 
-
-
-
-open_ports = []
-global_data = {
-    "domain": "",
-    "avg_ttl": 0,
-    "latitude": 0.0,
-    "longitude": 0.0,
-    "country": "",
-    "region": "",
-    "city": "",
-    "isp": "",
-    "org": "",
-    "asn": "",
-    "proxy": False,
-    "hosting": False,
-    "mobile": False,
-    "timezone": "",
-    "whois_data": {},
-    "ip_api_data": {},
-    "open_ports": [],
-}
-
+COMMON_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3306, 3389, 5432, 8080]
+TIMEOUT = 8
 
 
 def affichage_viper():
@@ -72,20 +53,8 @@ def affichage_viper():
                                                                                                                        
                                                                                                                                                                                                                    
     """
-    print(Fore.LIGHTMAGENTA_EX + viper_ascii)
-
-def phase_2(): #ia reflexion
-    print("Passage la phase 2 --> analyse avce IA")
-    print("IA en cours de reflexion...")
-    print("==================== RESULTATS =====================")
-    start_extraction_donnés()
-    
-
-
-
-
-
-
+    from terminal.theme import paint
+    print(paint(viper_ascii))
 
 
 def detect_input_type(value):
@@ -94,347 +63,184 @@ def detect_input_type(value):
         return "ip"
     except ValueError:
         pass
-    
-    try:
-        result = urlparse(value)
-        if result.scheme and result.netloc:
-            return "url"
-    except:
-        pass
-
+    parsed = urlparse(value)
+    if parsed.scheme and parsed.netloc:
+        return "url"
     if re.match(r"^AS\d+$", value, re.IGNORECASE):
         return "asn"
-    
-    if re.match(r"[^@]+@[^@]+\.[^@]+", value):
+    if re.match(r"[^@\s]+@[^@\s]+\.[^@\s]+$", value):
         return "email"
-
     if "." in value and " " not in value:
         return "domain"
-    
     return "unknown"
 
-# --- FONCTIONS DE COLLECTE ---
 
-def get_ip_info(ip):
-    print(f"\n{Style.BRIGHT}{Fore.GREEN}[+] Collecte infos IP: {ip}{Style.RESET_ALL}")
+def _kv(title, mapping):
+    return {"title": title, "kv": [[k, str(v)] for k, v in mapping.items() if v not in (None, "", [], {})]}
 
-    # ip-api.com
+
+def _get_json(url):
+    r = requests.get(url, timeout=TIMEOUT)
+    r.raise_for_status()
+    return r.json()
+
+
+def _whois(target):
+    import whois
+
+    rows = {}
+    for k, v in whois.whois(target).items():
+        if v and str(v) not in ("[]", "None"):
+            text = str(v)
+            rows[k.replace("_", " ").capitalize()] = text if len(text) <= 200 else text[:200] + "…"
+    return rows
+
+
+def _asn(number):
+    # RIPEstat (gratuit, sans clé) ; BGPView, utilisé avant, a fermé.
+    data = _get_json(f"https://stat.ripe.net/data/as-overview/data.json?resource=AS{number}")
+    d = data.get("data") or {}
+    if data.get("status") != "ok" or not d.get("holder"):
+        raise ValueError("ASN introuvable")
+    block = d.get("block") or {}
+    return {"ASN": f"AS{number}", "Titulaire": d.get("holder"), "Annoncé sur Internet": "oui" if d.get("announced") else "non",
+            "Attribué par": block.get("desc")}
+
+
+def _open_ports(ip):
+    def probe(port):
+        with socket.socket(socket.AF_INET6 if ":" in ip else socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(0.7)
+            return port if s.connect_ex((ip, port)) == 0 else None
+    with ThreadPoolExecutor(len(COMMON_PORTS)) as pool:
+        return [p for p in pool.map(probe, COMMON_PORTS) if p]
+
+
+def _trace(ip):
+    windows = subprocess.os.name == "nt"
+    # ip vient de ipaddress : pas d'injection d'option possible
+    from Tools.recon import console_text
+
+    ping = subprocess.run(["ping", "-n" if windows else "-c", "4", ip], capture_output=True, timeout=20)
+    trace = subprocess.run(["tracert", "-h", "15", "-d", ip] if windows else ["traceroute", "-m", "15", "-n", ip],
+                           capture_output=True, timeout=60)
+    return (console_text(ping.stdout) + "\n" + console_text(trace.stdout)).strip()
+
+
+def _ml(geo, ports, domain):
+    """Phase 2 : modèle local. Facultatif (scikit-learn)."""
     try:
-        r1 = requests.get(f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,region,regionName,city,district,zip,lat,lon,timezone,isp,org,as,mobile,proxy,hosting,query")
-        data1 = r1.json()
-        if data1.get("status") != "success":
-            print(f"{Fore.RED}Erreur ip-api: {data1.get('message')}{Style.RESET_ALL}")
-            return None
-        print(f"{Fore.YELLOW}== ip-api.com ==")
-        print(f"{Fore.CYAN}Pays : {Fore.WHITE}{data1.get('country')} ({data1.get('countryCode')})")
-        print(f"{Fore.CYAN}Région : {Fore.WHITE}{data1.get('regionName')} ({data1.get('region')})")
-        print(f"{Fore.CYAN}Ville : {Fore.WHITE}{data1.get('city')}, District : {Fore.WHITE}{data1.get('district')}, Code postal : {Fore.WHITE}{data1.get('zip')}")
-        print(f"{Fore.CYAN}Latitude : {Fore.WHITE}{data1.get('lat')}, Longitude : {Fore.WHITE}{data1.get('lon')}")
-        print(f"{Fore.CYAN}Fuseau horaire : {Fore.WHITE}{data1.get('timezone')}")
-        print(f"{Fore.CYAN}Fournisseur (ISP) : {Fore.WHITE}{data1.get('isp')}")
-        print(f"{Fore.CYAN}Organisation : {Fore.WHITE}{data1.get('org')}")
-        print(f"{Fore.CYAN}AS : {Fore.WHITE}{data1.get('as')}")
-        print(f"{Fore.CYAN}Mobile : {Fore.WHITE}{data1.get('mobile')}")
-        print(f"{Fore.CYAN}Proxy : {Fore.WHITE}{data1.get('proxy')}")
-        print(f"{Fore.CYAN}Hosting : {Fore.WHITE}{data1.get('hosting')}")
-        global_data["country"] = data1.get('country', "")
-        global_data["region"] = data1.get('regionName', "")
-        global_data["city"] = data1.get('city', "")
-        global_data["latitude"] = data1.get('lat', 0.0)
-        global_data["longitude"] = data1.get('lon', 0.0)
-        global_data["isp"] = data1.get('isp', "")
-        global_data["org"] = data1.get('org', "")
-        global_data["asn"] = data1.get('as', "")
-        global_data["proxy"] = data1.get('proxy', False)
-        global_data["hosting"] = data1.get('hosting', False)
-        global_data["mobile"] = data1.get('mobile', False)
-        global_data["timezone"] = data1.get('timezone', "")
-    except Exception as e:
-        print(f"{Fore.RED}Erreur API ip-api : {e}{Style.RESET_ALL}")
+        from Tools.SV_IA import start_phase_2
+    except ModuleNotFoundError as e:
+        return {"notes": [["info", f"Analyse par le modèle local ignorée : module « {e.name} » absent "
+                                   "(python launch.py --full)"]]}
+    data = {"domain": domain, "avg_ttl": 0, "open_ports": ports, "latitude": geo.get("lat", 0.0),
+            "longitude": geo.get("lon", 0.0), "country": geo.get("country", ""), "region": geo.get("regionName", ""),
+            "city": geo.get("city", ""), "isp": geo.get("isp", ""), "org": geo.get("org", ""), "asn": geo.get("as", ""),
+            "proxy": geo.get("proxy", False), "hosting": geo.get("hosting", False), "mobile": geo.get("mobile", False),
+            "timezone": geo.get("timezone", "")}
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        start_phase_2(data)
+    return {"title": "Analyse du modèle local (indicatif)", "text": out.getvalue().strip()}
 
-    # ipinfo.io
+
+def _ip_blocks(ip, domain=""):
+    blocks, notes, geo = [], [], {}
     try:
-        r2 = requests.get(f"https://ipinfo.io/{ip}/json")
-        data2 = r2.json()
-        print(f"\n{Fore.YELLOW}== ipinfo.io ==")
-        print(f"{Fore.CYAN}IP : {Fore.WHITE}{data2.get('ip')}")
-        print(f"{Fore.CYAN}Hostname : {Fore.WHITE}{data2.get('hostname')}")
-        print(f"{Fore.CYAN}Ville : {Fore.WHITE}{data2.get('city')}")
-        print(f"{Fore.CYAN}Région : {Fore.WHITE}{data2.get('region')}")
-        print(f"{Fore.CYAN}Pays : {Fore.WHITE}{data2.get('country')}")
-        print(f"{Fore.CYAN}Loc (lat,long) : {Fore.WHITE}{data2.get('loc')}")
-        print(f"{Fore.CYAN}Organisation : {Fore.WHITE}{data2.get('org')}")
-        print(f"{Fore.CYAN}Timezone : {Fore.WHITE}{data2.get('timezone')}")
-        print(f"{Fore.CYAN}Réservé aux entreprises : {Fore.WHITE}{'Oui' if data2.get('bogon') else 'Non'}")
-    except Exception as e:
-        print(f"{Fore.RED}Erreur API ipinfo.io : {e}{Style.RESET_ALL}")
-
-    # BGPView API pour ASN détaillé
+        geo = _get_json(f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,"
+                        "zip,lat,lon,timezone,isp,org,as,mobile,proxy,hosting,query")
+        if geo.get("status") != "success":
+            raise ValueError(geo.get("message", "réponse invalide"))
+        blocks.append(_kv("Géolocalisation (ip-api.com)", {
+            "IP": geo.get("query"), "Pays": f"{geo.get('country')} ({geo.get('countryCode')})",
+            "Région": geo.get("regionName"), "Ville": geo.get("city"), "Code postal": geo.get("zip"),
+            "Coordonnées": f"{geo.get('lat')}, {geo.get('lon')}", "Fuseau": geo.get("timezone"),
+            "Fournisseur": geo.get("isp"), "Organisation": geo.get("org"), "AS": geo.get("as"),
+            "Mobile": "oui" if geo.get("mobile") else "non", "Proxy / VPN": "oui" if geo.get("proxy") else "non",
+            "Hébergeur": "oui" if geo.get("hosting") else "non"}))
+        if geo.get("proxy"):
+            notes.append(["warn", "Adresse signalée comme proxy ou VPN"])
+    except (requests.RequestException, ValueError) as e:
+        notes.append(["warn", f"ip-api.com indisponible : {e}"])
     try:
-        asn = data1.get('as', '').split(' ')[0].replace('AS','')
-        if asn.isdigit():
-            r3 = requests.get(f"https://api.bgpview.io/asn/{asn}")
-            data3 = r3.json()
-            if data3.get('status') == 'ok':
-                asndata = data3['data']
-                print(f"\n{Fore.YELLOW}== Infos ASN détaillées (BGPView) ==")
-                print(f"{Fore.CYAN}ASN : {Fore.WHITE}{asn}")
-                print(f"{Fore.CYAN}Nom : {Fore.WHITE}{asndata.get('name')}")
-                print(f"{Fore.CYAN}Organisation : {Fore.WHITE}{asndata.get('holder')}")
-                print(f"{Fore.CYAN}Pays : {Fore.WHITE}{asndata.get('country_code')}")
-                print(f"{Fore.CYAN}Date création : {Fore.WHITE}{asndata.get('created')}")
-                print(f"{Fore.CYAN}Description : {Fore.WHITE}{asndata.get('description')}")
-                print(f"{Fore.CYAN}Réseaux associés (count) : {Fore.WHITE}{len(asndata.get('prefixes', []))}")
-                # Affiche quelques prefixes
-                prefixes = asndata.get('prefixes', [])
-                for p in prefixes[:5]:
-                    print(f"  - {p.get('prefix')}")
-            else:
-                print(f"{Fore.RED}ASN info non disponible.{Style.RESET_ALL}")
-    except Exception as e:
-        print(f"{Fore.RED}Erreur BGPView ASN : {e}{Style.RESET_ALL}")
-
-    # Ping + Traceroute
-    print(f"\n{Fore.YELLOW}== Ping et Traceroute ==")
-    try:
-        print(f"{Fore.GREEN}Ping 4 paquets...{Style.RESET_ALL}")
-        cmd_ping = ["ping", "-c", "4", ip] if not subprocess.os.name == 'nt' else ["ping", "-n", "4", ip]
-        ping_result = subprocess.run(cmd_ping, capture_output=True, text=True, timeout=15)
-        print(ping_result.stdout)
-    except Exception as e:
-        print(f"{Fore.RED}Erreur ping : {e}{Style.RESET_ALL}")
-
-    try:
-        print(f"{Fore.GREEN}Traceroute...{Style.RESET_ALL}")
-        cmd_traceroute = ["traceroute", ip] if not subprocess.os.name == 'nt' else ["tracert", ip]
-        trace_result = subprocess.run(cmd_traceroute, capture_output=True, text=True, timeout=30)
-        print(trace_result.stdout)
-    except Exception as e:
-        print(f"{Fore.RED}Erreur traceroute : {e}{Style.RESET_ALL}")
-
-    # Whois IP complet
-    try:
-        w = whois.whois(ip)
-        print(f"\n{Fore.YELLOW}== Whois IP complet ==")
-        for k, v in w.items():
-            if v and str(v) != "[]" and str(v) != "None":
-                val_str = str(v)
-                if len(val_str) > 200:
-                    val_str = val_str[:200] + "..."
-                print(f"{Fore.CYAN}{k.capitalize()}: {Fore.WHITE}{val_str}")
-    except Exception as e:
-        print(f"{Fore.RED}Erreur whois IP : {e}{Style.RESET_ALL}")
-
-    # Scan ports basique (top ports)
-    import socket
-    print(f"\n{Fore.YELLOW}== Scan ports basique ==")
-    common_ports = [21,22,23,25,53,80,110,143,443,445,3389]
-    
-    for port in common_ports:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(0.5)
+        info = _get_json(f"https://ipinfo.io/{ip}/json")
+        blocks.append(_kv("ipinfo.io", {"Nom d'hôte": info.get("hostname"), "Organisation": info.get("org"),
+                                        "Localisation": info.get("loc"), "Adresse réservée": "oui" if info.get("bogon") else ""}))
+    except (requests.RequestException, ValueError) as e:
+        notes.append(["warn", f"ipinfo.io indisponible : {e}"])
+    number = (geo.get("as") or "").split(" ")[0].upper().replace("AS", "")
+    if number.isdigit():
         try:
-            res = sock.connect_ex((ip, port))
-            if res == 0:
-                print(f"{Fore.GREEN}Port {port} ouvert")
-                open_ports.append(port)
-        except:
-            pass
-        sock.close()
-    if not open_ports:
-        print(f"{Fore.RED}Aucun port ouvert détecté.{Style.RESET_ALL}")
-    phase_2()
-    
+            blocks.append(_kv("Système autonome (RIPEstat)", _asn(number)))
+        except (requests.RequestException, ValueError) as e:
+            notes.append(["info", f"RIPEstat indisponible : {e}"])
+    # Pas de WHOIS d'adresse : python-whois renvoie celui du domaine (trompeur). ip-api/ipinfo/RIPEstat suffisent.
+    ports = _open_ports(ip)
+    blocks.append({"title": "Ports courants ouverts", "cols": ["Port", "Service"],
+                   "rows": [[str(p), _service(p)] for p in ports]})
+    risky = [p for p in ports if p in (21, 23, 445, 3389, 3306, 5432)]
+    if risky:
+        notes.append(["bad", f"Services sensibles exposés : {', '.join(map(str, risky))}"])
+    try:
+        blocks.append({"title": "Ping et traceroute", "text": _trace(ip)})
+    except (OSError, subprocess.TimeoutExpired) as e:
+        notes.append(["info", f"Ping / traceroute impossibles : {e}"])
+    blocks.append(_ml(geo, ports, domain))
+    return blocks, notes
 
 
-def scan_ports(ip, ports=None):
-    if ports is None:
-        ports = [21,22,23,25,53,80,110,143,443,445,3389]
-    print(f"\n[+] Scan ports communs sur {ip} :")
-    
-    for port in ports:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(0.7)
+def _service(port):
+    try:
+        return socket.getservbyport(port)
+    except OSError:
+        return "?"
+
+
+def investigate(value):
+    """Point d'entrée : renvoie la liste des blocs de résultat."""
+    from Tools.recon import clean_host, dns_addresses
+
+    value = value.strip()
+    kind = detect_input_type(value)
+    head = [_kv("Cible", {"Valeur": value, "Type détecté": kind})]
+    if kind == "ip":
+        blocks, notes = _ip_blocks(value)
+    elif kind in ("domain", "url"):
+        host = clean_host(urlparse(value).hostname if kind == "url" else value)
         try:
-            result = sock.connect_ex((ip, port))
-            if result == 0:
-                print(f"Port {port} : Ouvert")
-                open_ports.append(port)
-        except Exception:
-            pass
-        sock.close()
-    global_data["open_ports"] = open_ports.copy()
-    if not open_ports:
-        print("Aucun port ouvert détecté.")
-    return open_ports
+            ip = socket.gethostbyname(host)
+        except OSError:
+            return head + [{"notes": [["bad", f"Impossible de résoudre {host}"]]}]
+        blocks, notes = _ip_blocks(ip, host)
+        addrs = dns_addresses(host)
+        blocks.insert(0, {"title": f"DNS de {host}", "cols": ["Type", "Adresse"],
+                          "rows": [[k, a] for k, lst in addrs.items() for a in lst]})
+        try:
+            blocks.insert(1, _kv(f"WHOIS de {host}", _whois(host)))
+        except Exception as e:
+            notes.append(["info", f"WHOIS du domaine impossible : {e}"])
+    elif kind == "asn":
+        blocks, notes = [], []
+        try:
+            blocks.append(_kv("Système autonome (RIPEstat)", _asn(value[2:])))
+        except (requests.RequestException, ValueError) as e:
+            notes.append(["bad", f"ASN : {e}"])
+    elif kind == "email":
+        domain = value.split("@")[-1]
+        blocks, notes = [], [["info", f"Domaine de l'adresse : {domain} (aucune recherche sur la personne)"]]
+        try:
+            blocks.append(_kv(f"WHOIS de {domain}", _whois(domain)))
+        except Exception as e:
+            notes.append(["info", f"WHOIS impossible : {e}"])
+    else:
+        return head + [{"notes": [["bad", "Type non reconnu : IP, domaine, URL, ASN (AS15169) ou e-mail"]]}]
+    return head + ([{"notes": notes}] if notes else []) + blocks
 
 
-    
-
-def get_whois_info(target):
-    print(f"\n[+] Recherche WHOIS pour {target}")
-    try:
-        w = whois.whois(target)
-        for k, v in w.items():
-            # Affiche seulement les infos non vides et en limitant la longueur
-            if v and str(v) != "[]" and str(v) != "None":
-                val_str = str(v)
-                if len(val_str) > 150:
-                    val_str = val_str[:150] + "..."
-                print(f"{k.capitalize()}: {val_str}")
-        global_data["whois_data"] = w  # Le dict complet retourné par whois
-        return w
-    except Exception as e:
-        print(f"Erreur whois: {e}")
-        return None
-
-def dns_lookup(domain):
-    print(f"\n[+] Recherche DNS pour {domain}")
-    try:
-        result = subprocess.run(["nslookup", domain], capture_output=True, text=True, timeout=5)
-        print(result.stdout.strip())
-    except Exception as e:
-        print(f"Erreur DNS lookup: {e}")
-
-def get_asn_info(asn):
-    print(f"\n[+] Collecte infos ASN: {asn}")
-    try:
-        r = requests.get(f"https://api.bgpview.io/asn/{asn[2:]}")
-        data = r.json()
-        if data.get("status") != "ok":
-            print("ASN introuvable.")
-            return None
-        info = data.get("data", {})
-        print(f"ASN : {asn}")
-        print(f"Nom : {info.get('name')}")
-        print(f"Organisation : {info.get('holder')}")
-        print(f"Pays : {info.get('country_code')}")
-        print(f"Date création : {info.get('created')}")
-        return info
-    except Exception as e:
-        print(f"Erreur API ASN: {e}")
-        return None
-
-def search_email_osint(email):
-    print(f"\n[+] Recherche passive OSINT pour email: {email}")
-    # Simple démonstration, tu peux intégrer des APIs ou scrapers plus avancés
-    domain = email.split("@")[-1]
-    print(f"Domain associé : {domain}")
-    print("Recherche WHOIS du domaine lié à l'email:")
-    get_whois_info(domain)
-
-# --- GESTION URL ---
-
-def analyze_url(url):
-    print(f"\n[+] Analyse URL : {url}")
-    parsed = urlparse(url)
-    domain = parsed.netloc
-    print(f"Domaine extrait : {domain}")
-    get_whois_info(domain)
-    dns_lookup(domain)
-    parsed = urlparse(url)
-    domain = parsed.netloc
-    global_data["domain"] = domain
-    # Peut rajouter requêtes HTTP, headers, certificats SSL, robots.txt, sitemap, etc.
-
-# --- MAIN ---
-
-def run_shadowviper(input_value):
-    # Reset de l'état global pour éviter la pollution entre deux appels
-    global open_ports, global_data
-    open_ports = []
-    global_data = {
-        "domain": "", "avg_ttl": 0, "latitude": 0.0, "longitude": 0.0,
-        "country": "", "region": "", "city": "", "isp": "", "org": "",
-        "asn": "", "proxy": False, "hosting": False, "mobile": False,
-        "timezone": "", "whois_data": {}, "ip_api_data": {}, "open_ports": [],
-    }
+def run_shadowviper(value):
+    """Ancien point d'entrée (bannière + affichage)."""
+    from terminal.blocks import print_blocks
 
     affichage_viper()
-    input_type = detect_input_type(input_value)
-    print(f"Type détecté : {input_type}")
-
-    if input_type == "ip":
-        get_ip_info(input_value)
-    elif input_type == "domain":
-        ip = resolve_domain_to_ip(input_value)
-        if ip:
-            get_ip_info(ip)
-        else:
-            print("Impossible de résoudre l'IP du domaine.")
-            return
-        get_whois_info(input_value)
-        scan_ports(input_value)
-        dns_lookup(input_value)
-    elif input_type == "url":
-        analyze_url(input_value)
-        # get_ip_info attend une IP : on extrait l'hôte de l'URL puis on le résout.
-        host = urlparse(input_value).hostname
-        if host:
-            ip = resolve_domain_to_ip(host)
-            if ip:
-                get_ip_info(ip)
-    elif input_type == "asn":
-        # Un ASN n'est pas une IP : pas de géoloc IP pertinente ici.
-        get_asn_info(input_value)
-    elif input_type == "email":
-        # Un email n'est pas une IP : pas de géoloc IP pertinente ici.
-        search_email_osint(input_value)
-    else:
-        print("Type non reconnu, veuillez réessayer.")
-
-def resolve_domain_to_ip(domain):
-    try:
-        return socket.gethostbyname(domain)
-    except Exception:
-        return None
-
-
-def start_extraction_donnés():
-    # On extrait les données depuis global_data
-    domain = global_data.get("domain", "")
-    avg_ttl = 0  # À calculer ou ajouter une méthode pour récupérer TTL moyen si possible
-
-    features = []
-    features.append(len(domain))
-    features.append(avg_ttl)
-    features.append(len(global_data.get("open_ports", [])))
-    features.append(global_data.get("latitude", 0.0))
-    features.append(global_data.get("longitude", 0.0))
-    features.append(int(global_data.get("proxy", False)))
-    features.append(int(global_data.get("hosting", False)))
-    features.append(int(global_data.get("mobile", False)))
-    features.append(len(global_data.get("country", "")))
-    features.append(len(global_data.get("region", "")))
-    features.append(len(global_data.get("city", "")))
-    features.append(len(global_data.get("isp", "")))
-    features.append(len(global_data.get("org", "")))
-    features.append(len(global_data.get("asn", "")))
-    features.append(len(global_data.get("timezone", "")))
-
-    result_dict = {
-        "domain": domain,
-        "avg_ttl": avg_ttl,
-        "open_ports": global_data.get("open_ports", []),
-        "latitude": global_data.get("latitude", 0.0),
-        "longitude": global_data.get("longitude", 0.0),
-        "country": global_data.get("country", ""),
-        "region": global_data.get("region", ""),
-        "city": global_data.get("city", ""),
-        "isp": global_data.get("isp", ""),
-        "org": global_data.get("org", ""),
-        "asn": global_data.get("asn", ""),
-        "proxy": global_data.get("proxy", False),
-        "hosting": global_data.get("hosting", False),
-        "mobile": global_data.get("mobile", False),
-        "timezone": global_data.get("timezone", ""),
-        "features_vector": features,
-    }
-    print("[INFO] Dictionnaire construit pour la phase 2 :")
-    print(json.dumps(result_dict, indent=2))
-    start_phase_2(result_dict)
-
-
-if __name__ == "__main__":
-    val = input("shadowviper > Entrez une IP, domaine, URL, ASN ou email : ").strip()
-    run_shadowviper(val)
+    print_blocks(investigate(value))

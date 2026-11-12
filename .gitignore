@@ -25,8 +25,10 @@ env/
 
 # === Runtime Nebula (données locales par utilisateur) ===
 users/
+missions/
 saves/
 nebula_saves.json
+Nebula_IA/config.json
 coffre_base.json
 *.html
 
@@ -50,3 +52,7 @@ Thumbs.db
 Mind-NTC/
 
 opencode.json
+!NebulaGui/dashboard.html
+
+# === Wordlists générées (blackledger) ===
+cas

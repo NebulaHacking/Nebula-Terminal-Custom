@@ -1,15 +1,59 @@
 # Tools.txt — Inventaire des outils inclus dans Nebula Terminal
 # Spécifique au projet "Nebula" (fichiers main.py / launch.py)
-# Dernière mise à jour : 2025-10-13
+# Dernière mise à jour : 2026-11-10
+
+###############################################################################
+# 0) NOUVEAUTES 2026-11 — Crypto, fichiers et reconnaissance (tapez `help crypto` / `help recon`)
+###############################################################################
+
+Shell Nebula — confort du terminal
+  - Tab complete les commandes et les chemins ; une commande deja tapee est proposee en gris (fleche droite).
+  - commande > fichier (ou >>) enregistre la sortie dans l'espace de travail ; --json pour les outils recents.
+  - alias, run <script>, tuto (visite guidee), update. rm supprime dans l'espace de travail ; exec lance une commande systeme.
+
+Tools.virtualfs — Espace de travail (ls, cd, mkdir, cat, grep, rm, mv, cp, tree, find, import, export)
+  - Description : systeme de fichiers de Nebula, sauvegarde avec le profil. Chemins comme sous Linux (~, .., /).
+
+Tools.tracewave — Analyse de captures reseau (commande : tracewave, alias tw)
+  - Description : lit un fichier .pcap ou .pcapng ; machines, conversations, services, domaines, sites HTTPS, et constats automatiques (protocoles en clair, identifiants visibles avec valeur masquee, conflits ARP).
+  - Note : tracewave compare <avant> <apres> montre ce qui a change. Capture sous Windows : voir tracewave.help (pktmon).
+
+Tools.reqforge — Atelier de requetes HTTP (commande : reqforge, alias rf)
+  - Description : envoyer, rejouer avec modifications, comparer deux reponses, exporter en curl ou Python. Chaque reponse est analysee automatiquement.
+  - Note : respecte le perimetre de mission. Une requete = une action (pas d'envoi en masse).
+
+Nebula_IA — Copilote de pentest (commande : ia, alias nebula_ia)
+  - Description : lance lui-meme les commandes Nebula, lit les resultats (--json), enchaine et releve les constats avec preuve et correction.
+  - Fournisseurs : anthropic (Claude), openai (ChatGPT), gemini, mistral, groq, deepseek, openrouter, ollama (local). Cle : ia key <fournisseur>. Verifier : ia test.
+  - Playbooks : ia audit web|tls|reseau|complet <cible> (mission ouverte, cible dans le perimetre).
+  - Note : commande reseau = votre accord (sauf ia auto on, dans une mission). Hors perimetre = refuse par le terminal. Ses actions vont au registre. Ctrl+C ou bouton Stop pour l'arreter.
+
+terminal.mission — Mode mission (commande : mission)
+  - Description : perimetre autorise, registre de preuves chaine par hash, comparaison entre deux passages, constats, retest, rapport Markdown + HTML (imprimable en PDF) avec tableau de conformite (nLPD, ISO 27001, NIS2).
+  - Note : mission ouverte = les commandes reseau hors perimetre sont refusees et tout est enregistre. mission retest rejoue la preuve de chaque constat.
+
+Tools.cryptokit — Encodage, empreintes, mots de passe, fichiers (stdlib uniquement)
+  - Commandes : encode, decode, hash, hashid, ipcalc, jwt, pwgen, pwstrength, ts, uuid, strings, fileinfo
+  - Plateforme : Cross-platform. Aucune dependance.
+  - Note : pwstrength demande le mot de passe apres coup, il n'entre jamais dans l'historique.
+
+Tools.recon — Reconnaissance reseau
+  - Commandes : dns, whois, headers, banner, sslscan, subdomain, hostscan
+  - Plateforme : Cross-platform (dns utilise nslookup, hostscan utilise ping).
+  - Note : a utiliser uniquement sur des cibles autorisees. hostscan est limite a 4096 adresses.
+
+Tools.portscan / Tools.dirb — desormais en parallele
+  - scan -a (65535 ports) : environ 1 minute. dirb : 20 requetes simultanees, detection des faux 200.
+  - Ctrl+C arrete le scan.
 
 ###############################################################################
 # 1) OUTILS / MODULES INTERNES (package Tools / ToolsFunction / NebulaGui)
 ###############################################################################
 
-Tools.shadowviper — Module interne / outil « shadowviper »
-  - Description : outil personnalisé inclus dans le package Tools. Probablement utilitaire de reconnaissance ou collection d'outils spécifiques à Nebula.
-  - Plateforme : Cross-platform (via Python).
-  - Note : fichier local — vérifier s'il nécessite privilèges root (sniffing, raw sockets). Masque/valide les entrées sensibles avant logging.
+Tools.shadowviper — Collecte d'informations (commande : shadowviper <cible>)
+  - Description : IP, domaine, URL, ASN (AS15169) ou e-mail -> geolocalisation (ip-api, ipinfo), systeme autonome (RIPEstat), WHOIS du domaine, DNS, ports courants, ping et traceroute, avis du modele local.
+  - Plateforme : Cross-platform. Le modele local demande scikit-learn (python launch.py --full) ; sans lui, le reste fonctionne.
+  - Note : resultats en blocs (dashboard, --json, Nebula IA). Respecte le perimetre de mission.
 
 Tools.dirb — Wrapper local pour brute-forcing de répertoires
   - Description : module interne qui expose une fonction `dirb` utilisée depuis le menu. Peut encapsuler wordlists, scans web.
@@ -26,20 +70,15 @@ Tools.ping.ping.run_ping_command — Wrapper ping
   - Plateforme : Cross-platform (ICMP nécessite privilèges sur certains OS).
   - Note : sur Linux/Windows, l’usage d’ICMP peut nécessiter privilèges ; prévoir fallback (TCP ping) si pas autorisé.
 
-Tools.nexariescan.run_scan — Scanner interne « nexariescan »
-  - Description : scanner personnalisé intégré dans Nebula pour reconnaissance / scan de services.
+Tools.nexariescan — XSS reflechis (commande : nexariescan <url> [--delay 0.5] [--pages 50] [--post])
+  - Description : parcourt le site (meme domaine) puis teste les parametres d'URL et les formulaires : signale le code injecte renvoye sans echappement.
   - Plateforme : Cross-platform.
-  - Note : vérifier limites de rate/threads et activer SAFE_MODE par défaut.
+  - Note : GET seulement par defaut (--post pour les formulaires POST). Site autorise uniquement ; respecte le perimetre de mission.
 
-ToolsFunction.netstorm — Fonction utilitaire « netstorm »
-  - Description : utilitaire réseau intégré — nom évocateur d’activité importante sur le réseau (tests de charge, etc).
-  - Plateforme : Cross-platform.
-  - Note : dangereux en environnement non contrôlé — toujours désactivé en SAFE_MODE et nécessite confirmation explicite.
-
-NebulaGui.Gui — Interface graphique Nebula
-  - Description : module GUI du projet (fenêtres, menus). Implique tkinter / affichage HTML selon implémentation.
-  - Plateforme : Linux (X), Windows (Win32), mac (requiert Tk).
-  - Note : prévoir mode `--headless` pour environnements sans display (serveurs/Kali headless). Ne pas lancer automatiquement si DISPLAY absent.
+NebulaGui.server — Dashboard web Nebula (commande : nebulaGui)
+  - Description : tableau de bord dans le navigateur. Activite du terminal en direct, console, recon en un clic, palette de commandes (Ctrl+K).
+  - Plateforme : Cross-platform (serveur local Python, aucun framework).
+  - Note : accessible uniquement depuis ce PC (127.0.0.1) et protege par un jeton aleatoire.
 
 ###############################################################################
 # 2) BIBLIOTHÈQUES / DÉPENDANCES TIERS UTILISÉES PAR NEBULA

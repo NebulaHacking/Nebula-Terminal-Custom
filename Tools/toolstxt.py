@@ -4,8 +4,10 @@ Garde le double fix d'encodage exact (UTF-8 → Latin-1 → UTF-8) et la suppres
 des accents, puis convertit les séquences `\\033` en vraies séquences ANSI.
 """
 import unicodedata
+from pathlib import Path
 
-TOOLS_TXT_PATH = "txt.help.folder/Tools.txt"
+# Absolu : marche quel que soit le dossier de lancement.
+TOOLS_TXT_PATH = str(Path(__file__).resolve().parent.parent / "txt.help.folder" / "Tools.txt")
 
 
 def enlever_accents(texte: str) -> str:

@@ -1,0 +1,23 @@
+# Outils optionnels : python launch.py --full  (ou pip install -e ".[all]")
+-r requirements.txt
+
+# shadowviper (analyse par apprentissage automatique)
+numpy
+scikit-learn
+joblib
+
+# iptracker -m (carte interactive)
+folium
+
+# browser, filmux (fenêtres Qt)
+PyQt5
+PyQtWebEngine
+
+# nosint (OSINT, outil séparé)
+holehe
+trio
+httpx
+pysocks
+
+# nebulers (jeu)
+keyboard

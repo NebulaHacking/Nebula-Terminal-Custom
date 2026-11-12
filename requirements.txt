@@ -1,49 +1,15 @@
 # ================================================================
-# Nebula Terminal Custom — Dépendances Python
-# Stockés dans le venv (voir launch.py). Ne pas installer en global.
+# Nebula Terminal Custom — dépendances de base (installées par launch.py)
+# Les outils optionnels sont dans requirements-full.txt : python launch.py --full
+# Sans eux, la commande concernée affiche la ligne pip à lancer.
 # ================================================================
-
-# --- HTTP / parsing ---
 requests
+certifi
 beautifulsoup4
-lxml
-httpx
-
-# --- CLI / affichage ---
 colorama
 pyfiglet
 rich
-
-# --- Mapping / cartographie ---
-folium
-branca
-
-# --- System / réseau ---
-psutil
+prompt_toolkit    # Tab, suggestions grisées
+psutil            # bannière, dashboard
 python-whois
-icmplib
-holehe
-trio
-pysocks       # requis pour le proxy SOCKS5 Tor (nebula_osint étape 2)
-
-# --- Data / Machine Learning ---
-numpy
-scikit-learn
-joblib
-
-# --- GUI (NebulaGui) ---
-PyQt5
-PyQtWebEngine
-
-# --- Nebula IA ---
-# IA locale (Ollama) utilisée via subprocess — pas de package à installer
-pyttsx3
-sounddevice
-soundfile
-openai
-
-# --- Interaction clavier (optionnel) ---
-keyboard
-
-# --- Chargement du fichier .env (secrets) ---
-python-dotenv
+icmplib           # ping

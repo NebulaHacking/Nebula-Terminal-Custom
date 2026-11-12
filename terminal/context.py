@@ -16,6 +16,9 @@ class Context:
     history: list[str] = field(default_factory=list)
     browser_history: list[str] = field(default_factory=list)
     should_exit: bool = False  # posé par la commande `exit` ; le REPL break dessus
+    last_status: str = "ok"     # statut et durée de la dernière commande : affichés dans le prompt
+    last_duration: float = 0.0
+    aliases: dict = field(default_factory=dict)  # alias de l'utilisateur (sauvegardés dans son profil)
     current_user: str = "nebula"  # Utilisateur actuel
 
 

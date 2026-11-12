@@ -17,8 +17,10 @@ def _calc(ctx, argv, raw):
         calculatrice()
 
 
-@REGISTRY.register("weather", help_text="weather [ville]   - Afficher la météo d'une ville (ex: weather Paris)")
+@REGISTRY.register("weather", aliases=("meteo",), help_text=(
+    "weather [ville]   - Météo actuelle et prévisions sur 3 jours (sans ville : ta position estimée)\n"
+    "Exemples : weather Fribourg   |   weather \"New York\""), summary="Météo et prévisions sur 3 jours")
 def _weather(ctx, argv, raw):
-    from Tools.weather import cmd_weather
-    # Parité : le premier argument après "weather" est la ville.
-    cmd_weather(argv[1] if len(argv) > 1 else None)
+    from terminal.blocks import print_blocks
+    from Tools.weather import weather_blocks
+    print_blocks(weather_blocks(raw.split(None, 1)[1].strip('"') if len(argv) > 1 else ""))

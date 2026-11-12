@@ -3,19 +3,20 @@
 Remplace `terminal_custom()` (ancien main.py 688-1302) et gère le
 KeyboardInterrupt qui était capturé par la boucle `while True` externe.
 """
-import copy
 import sys
+import time
 
 from colorama import init
 
+from terminal import events, mission
 from terminal.banner import show_nebula
 from terminal.context import Context, default_context
 from terminal.prompt import get_prompt
 from terminal.registry import CommandRegistry, build_registry
 from terminal.theme import get_theme_name, set_theme
 from terminal.user_manager import (
-    get_available_users, user_exists, create_user, get_user_theme, get_user_vfs,
-    save_user_theme, save_user_history, save_user_vfs, get_user_history
+    get_available_users, user_exists, create_user, get_user_theme, get_user_vfs, get_user_aliases,
+    save_user_theme, save_user_history, save_user_vfs, save_user_aliases, get_user_history
 )
 
 
@@ -80,16 +81,26 @@ def select_or_create_user() -> str:
 
 
 def run(ctx: Context, reg: CommandRegistry) -> None:
-    """Boucle principale du REPL."""
+    """Boucle principale du REPL. Ctrl+C efface la ligne (comme sous Kali) ; exit ou Ctrl+D quitte."""
+    from terminal.line_editor import LineReader
+
     show_nebula()
+    reader = LineReader(reg, ctx)
     while not ctx.should_exit:
         try:
-            cmd = input(get_prompt(ctx)).strip()
-        except (KeyboardInterrupt, EOFError):
+            cmd = reader.read(get_prompt(ctx)).strip()
+        except KeyboardInterrupt:
+            if reader.session is None:  # saisie simple : pas de ligne à effacer, on quitte comme avant
+                print("\n\nFermeture de Nebula...")
+                break
+            continue
+        except EOFError:
             print("\n\nFermeture de Nebula...")
             break
         if cmd:
-            reg.dispatch(ctx, cmd)
+            started = time.time()
+            ctx.last_status = reg.dispatch(ctx, cmd)
+            ctx.last_duration = time.time() - started
 
 
 def main() -> None:
@@ -103,10 +114,25 @@ def main() -> None:
     ctx = default_context()
     ctx.current_user = username
     ctx.history = get_user_history(username).copy()
-    saved_vfs = get_user_vfs(username)
+    ctx.aliases = dict(get_user_aliases(username))
+    saved_vfs, vfs_broken = get_user_vfs(username), False
     if saved_vfs:
-        ctx.vfs.root = saved_vfs
-    vfs_before = copy.deepcopy(ctx.vfs.root)
+        try:
+            ctx.vfs.load_tree(saved_vfs)
+        except ValueError as e:
+            print(f"[!] Espace de travail du profil illisible ({e}) : un espace vide est utilisé, l'ancien n'est pas effacé.")
+            vfs_broken = True
+    if not ctx.history:
+        print("[*] Première fois ? Tape  tuto  pour une visite guidée de 5 minutes.")
+
+    from terminal.commands.shell import startup_notice
+    notice = startup_notice()
+    if notice:
+        print(notice)
+    events.enable()  # garde la sortie des commandes : ia ? explique la dernière
+    mission.restore()
+    if mission.active():
+        print(f"[*] Mission ouverte : {mission.active()['name']} (périmètre : {', '.join(mission.active()['scope'])})")
 
     run(ctx, build_registry())
 
@@ -114,16 +140,11 @@ def main() -> None:
     save_user_history(username, ctx.history)
     save_user_theme(username, get_theme_name())
 
-    if ctx.vfs.root != vfs_before:
-        try:
-            response = input("Sauvegarder le systeme de fichiers virtuel ? (o/n) : ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            response = "n"
-        if response in ("o", "oui", "y", "yes"):
-            save_user_vfs(username, ctx.vfs.root)
-            print("[+] VFS sauvegarde.")
-        else:
-            print("[-] VFS non sauvegarde.")
+    save_user_aliases(username, ctx.aliases)
+    # L'espace de travail est sauvegardé automatiquement, sauf s'il n'a pas pu être relu au démarrage
+    # (on ne remplace jamais un ancien espace illisible par un espace vide).
+    if not vfs_broken:
+        save_user_vfs(username, ctx.vfs.root)
 
     print(f"[+] Donnees sauvegardees pour '{username}'.")
     print("[*] Merci d'avoir utilise Nebula !")

@@ -24,8 +24,12 @@ def knano_editor(vfs: VirtualFS, filename_arg: str | None = None) -> None:
             print("Annulé.")
             return
 
-    # référence au dossier courant dans le FS virtuel
-    dir_ref = vfs.get_current_dir()
+    # dossier qui contient le fichier (le nom peut être un chemin : notes/todo.txt, ~/x, /Nebula/y)
+    try:
+        dir_ref, filename, _ = vfs._parent(filename)
+    except ValueError as e:
+        print(f"Erreur : {e}")
+        return
 
     # charge contenu existant si présent
     if filename in dir_ref and isinstance(dir_ref[filename], str):

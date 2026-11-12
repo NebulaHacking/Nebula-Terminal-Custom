@@ -34,10 +34,22 @@ _HELP_CATEGORIES = (
     ("terminal.commands.builtins",    "Noyau",        "cyan"),
     ("terminal.commands.filesystem",  "Fichiers",     "green"),
     ("terminal.commands.network",     "Réseau",       "magenta"),
+    ("terminal.commands.ia",          "Nebula IA",    "bright_magenta"),
+    ("terminal.commands.mission",     "Mission",      "bright_yellow"),
+    ("terminal.commands.analysis",    "Analyse",      "bright_cyan"),
+    ("terminal.commands.recon",       "Reconnaissance", "bright_magenta"),
+    ("terminal.commands.crypto",      "Crypto",       "bright_green"),
+    ("terminal.commands.shell",       "Shell",        "white"),
     ("terminal.commands.system",      "Système",      "yellow"),
     ("terminal.commands.misc",        "Utilitaires",  "blue"),
     ("terminal.commands.external",    "Outils",       "red"),
 )
+
+
+def _plain(text: str) -> str:
+    """Minuscules sans accents, pour que `help reseau` trouve « Réseau »."""
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", text.lower()) if unicodedata.category(c) != "Mn")
 
 
 def _describe(cmd) -> str:
@@ -53,7 +65,7 @@ def _describe(cmd) -> str:
     return cmd.help_text.strip()
 
 
-@REGISTRY.register("help", help_text="help          - Liste des commandes disponibles",
+@REGISTRY.register("help", help_text="help          - Liste des commandes disponibles\nhelp <mot>    - Seulement une catégorie ou les commandes contenant ce mot (ex : help crypto)",
                    summary="Affiche la liste des commandes en tableau")
 def _help(ctx, argv, raw):
     from terminal.theme import get_rich_style
@@ -85,19 +97,26 @@ def _help(ctx, argv, raw):
     tbl.add_column("Commande", style="bold", no_wrap=True, min_width=18)
     tbl.add_column("Description", style="white")
 
+    # `help <mot>` : ne garde que les lignes dont la catégorie ou le nom contient le mot.
+    wanted = argv[1].lower() if len(argv) > 1 else ""
     current = None
     for cmd in sorted(REGISTRY.commands(), key=sort_key):
         label, style = next(
             ((lab, st) for mod, lab, st in _HELP_CATEGORIES if mod == cmd.func.__module__),
             ("Divers", "white"),
         )
+        if wanted and wanted not in _plain(label) and wanted not in cmd.name.lower():
+            continue
         if label != current:
             current = label
             tbl.add_row(f"[{style} bold]── {label} ──[/]", "", style=f"{style} dim")
         tbl.add_row(cmd.name, _describe(cmd))
 
+    if wanted and current is None:
+        console.print(f"Aucune commande ni catégorie ne contient '{wanted}'.")
+        return
     console.print(tbl)
-    console.print("[dim]<cmd>.help pour l'aide détaillée d'un outil[/]")
+    console.print("[dim]<cmd>.help : aide détaillée d'un outil  |  help <mot> : filtrer (ex : help crypto)[/]")
 
 
 # ---------------------------------------------------------------------
@@ -132,22 +151,26 @@ def _nebula_ascii(ctx, argv, raw):
 # ---------------------------------------------------------------------
 @REGISTRY.register("theme", help_text="theme <nom>     - Changer le thème actif (ex: micha, redark)")
 def _theme(ctx, argv, raw):
-    from terminal.theme import set_theme, get_available_themes
+    from terminal.theme import _load_themes, get_theme_name, paint, set_theme, swatch
 
-    # argv[0] is the command name, argv[1:] are the arguments
-    if len(argv) < 2:
-        # List available themes if no name provided
-        themes = ", ".join(get_available_themes())
-        print(f"Thèmes disponibles : {themes}")
-        print("Usage : theme <nom>")
+    themes = _load_themes()
+    if len(argv) < 2:  # aperçu : une barre de couleurs par thème, le thème actif marqué
+        current = get_theme_name()
+        print()
+        for name, t in themes.items():
+            mark = "*" if name == current else " "
+            print(f"  {mark} {name:<10} {swatch(name)}  {t.get('description', '')}")
+        print("\n  Usage : theme <nom>   (theme random = au hasard)\n")
         return
 
-    theme_name = argv[1]
-    success = set_theme(theme_name)
-    if success:
-        print(f"Thème '{theme_name}' appliqué avec succès.")
-    else:
-        print(f"Échec : Le thème '{theme_name}' n'existe pas.")
+    name = argv[1].lower()
+    if name == "random":
+        name = random.choice([n for n in themes if n != get_theme_name()] or list(themes))
+    if not set_theme(name):
+        print(f"Échec : le thème '{name}' n'existe pas. Tapez  theme  pour voir la liste.")
+        return
+    print(paint("  _  _     _         _\n | \\| |___| |__ _  _| |__ _\n | .` / -_) '_ \\ || | / _` |\n |_|\\_\\___|_.__/\\_,_|_\\__,_|"))
+    print(f"  Thème « {themes[name].get('name', name)} » appliqué (sauvegardé avec votre profil).")
 
 
 

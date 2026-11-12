@@ -1,0 +1,3 @@
+#!/bin/sh
+# Lanceur Nebula (Linux / macOS) : nebula | nebula update
+exec python3 "$(dirname "$(readlink -f "$0")")/launch.py" "$@"

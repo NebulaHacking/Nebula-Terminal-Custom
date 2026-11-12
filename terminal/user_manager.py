@@ -109,6 +109,14 @@ def get_user_history(username: str) -> list:
     return (get_user_config(username) or {}).get("history", [])
 
 
+def save_user_aliases(username: str, aliases: dict) -> bool:
+    return _update(username, "aliases", aliases)
+
+
+def get_user_aliases(username: str) -> dict:
+    return (get_user_config(username) or {}).get("aliases", {})
+
+
 def get_user_vfs(username: str) -> Dict:
     return (get_user_config(username) or {}).get("vfs_data", {})
 

@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nebula-terminal-custom"
+dynamic = ["version"]
+description = "Terminal de cybersécurité : outils, missions encadrées, dashboard web et copilote IA"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = [
+    "requests", "certifi", "beautifulsoup4", "colorama", "pyfiglet", "rich",
+    "prompt_toolkit", "psutil", "python-whois", "icmplib",
+]
+
+[project.optional-dependencies]
+ml = ["numpy", "scikit-learn", "joblib"]
+map = ["folium"]
+gui = ["PyQt5", "PyQtWebEngine"]
+osint = ["holehe", "trio", "httpx", "pysocks"]
+games = ["keyboard"]
+all = ["nebula-terminal-custom[ml,map,gui,osint,games]"]
+
+[project.scripts]
+nebula = "terminal.core:main"
+
+# Installation prévue en mode éditable (pip install -e .) : les données (thèmes, dashboard, aide) restent dans le dossier.
+[tool.setuptools]
+packages = { find = { include = ["terminal*", "Tools*", "NebulaGui*", "Nebula_IA*"] } }
+
+[tool.setuptools.dynamic]
+version = { attr = "terminal.__version__" }

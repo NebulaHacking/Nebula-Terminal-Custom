@@ -1,0 +1,24 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      # Dépendances de base seulement : les outils optionnels doivent se dégrader proprement sans elles.
+      - run: python -m pip install -e .
+      - run: python -m unittest discover tests -v
+        env:
+          PYTHONIOENCODING: utf-8

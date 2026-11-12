@@ -77,6 +77,11 @@ def get_venv_python():
         return VENV_DIR / "bin" / "python"
 
 def main():
+    if sys.argv[1:2] in (["--version"], ["-V"]):  # sans venv : on lit la version dans le fichier
+        import re
+        init = (Path(__file__).resolve().parent / "terminal" / "__init__.py").read_text(encoding="utf-8")
+        print("Nebula Terminal Custom " + re.search(r'__version__ = "(.+?)"', init).group(1))
+        return
     # 0) Charge les variables d'environnement depuis .env
     load_env_file()
 
@@ -89,18 +94,31 @@ def main():
         print("[!] Vérifie la création du venv ou utilise --python / path_to_python")
         sys.exit(1)
 
-    # 2) Installer requirements seulement s'ils ont changé depuis la dernière installation
-    if REQ_FILE.exists():
-        req_hash = hashlib.sha256(REQ_FILE.read_bytes()).hexdigest()
-        if STAMP_FILE.exists() and STAMP_FILE.read_text().strip() == req_hash:
+    # 2) Installer requirements seulement s'ils ont changé depuis la dernière installation.
+    #    --full : ajoute les outils optionnels (requirements-full.txt), une fois suffit.
+    full = "--full" in sys.argv[1:]
+    if full:
+        sys.argv.remove("--full")
+    req_file = BASE_DIR / "requirements-full.txt" if full else REQ_FILE
+    stamp = STAMP_FILE.with_name(STAMP_FILE.name + ".full") if full else STAMP_FILE
+    if req_file.exists():
+        req_hash = hashlib.sha256(req_file.read_bytes() + REQ_FILE.read_bytes()).hexdigest()
+        if stamp.exists() and stamp.read_text().strip() == req_hash:
             print("[*] Dépendances à jour.")
         else:
-            print("[*] Installation des dépendances (depuis requirements.txt)...")
+            print(f"[*] Installation des dépendances (depuis {req_file.name})...")
             run([python_bin, "-m", "pip", "install", "--upgrade", "pip"])
-            run([python_bin, "-m", "pip", "install", "-r", str(REQ_FILE)])
-            STAMP_FILE.write_text(req_hash)
+            run([python_bin, "-m", "pip", "install", "-r", str(req_file)])
+            stamp.write_text(req_hash)
     else:
         print("[!] Pas de requirements.txt trouvé (skipped).")
+
+    # nebula update : met à jour via git avec le python du venv (dépendances déjà là)
+    if sys.argv[1:2] == ["update"]:
+        code = ("from terminal.commands.shell import update_from_git as u\n"
+                "try:\n    print(u())\nexcept ValueError as e:\n    print('[!]', e)\n    raise SystemExit(1)")
+        result = subprocess.run([python_bin, "-c", code], cwd=BASE_DIR)
+        sys.exit(result.returncode)
 
     # 3) Lancer le main avec le python du venv
     if MAIN_FILE.exists():

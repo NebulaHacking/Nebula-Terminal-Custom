@@ -1,8 +1,8 @@
-"""Ponts vers les outils externes (M5) — dirb, shadowviper, nexariescan, netstorm,
-browser, nebulers, nebulaGui, nebula_ia, blackledger, filmux.
+"""Ponts vers les outils externes (M5) — dirb, shadowviper, nexariescan,
+browser, nebulers, nebulaGui, blackledger, filmux.
 
 Portage des branches de l'ancien main.py. Tous les imports sont LAZY (dans les
-handlers) : chaque module externe peut être lourd (keyboard, PyQt5, sounddevice…)
+handlers) : chaque module externe peut être lourd (keyboard, PyQt5…)
 ou manquer — le terminal démarre et fonctionne sans eux.
 
 Outils supprimés au refactor (approuvé « supprimer le reste ») :
@@ -12,45 +12,33 @@ Outils supprimés au refactor (approuvé « supprimer le reste ») :
 from terminal.registry import REGISTRY
 
 
-DIRB_HELP = """ -- Dirb v1.0 --
+DIRB_HELP = """ -- Dirb v1.1 --
 
-Hotkeys :
-   q        - Stop scan
-   r        - Stats restantes
+Cherche les dossiers et fichiers cachés d'un site (20 requêtes en parallèle).
+Ctrl+C arrête le scan.
 
 Options :
-   dirb <url>              - scan avec la wordlist intégrée (~100 mots)
-   dirb <url> <wordlist>   - scan avec un fichier wordlist externe
-   dirb -m <url>           - mode minimal (10 mots testés)
-   dirb -w <url> <wordlist> - scan avec wordlist externe
+   dirb <url>               - wordlist par défaut (DirbWordListe/baseWord.txt)
+   dirb <url> <wordlist>    - avec un fichier wordlist
+   dirb -m <url>            - mode minimal (10 mots testés)
+   dirb -w <url> <wordlist> - identique à dirb <url> <wordlist>
+
+Seuls les chemins qui existent sont affichés (200, redirections, 401/403...).
 
 Exemples :
    dirb https://example.com
-   dirb https://example.com DirbWordListe/baseWord.txt
-   dirb -w https://example.com DirbWordListe/mots.txt
+   dirb https://example.com mots.txt
 """
 
-SV_HELP = """ShadowViper v1.0
-By Ma4g
+SV_HELP = """shadowviper <cible>
 
-Usage :
-   shadowviper [paramètre] <cible>
+Collecte d'informations sur une IP, un domaine, une URL, un ASN (AS15169) ou une adresse e-mail :
+géolocalisation, fournisseur, système autonome, WHOIS, DNS, ports courants, ping et traceroute,
+puis avis du modèle local (scikit-learn, facultatif : python launch.py --full).
 
-Notes :
-   ShadowViper est un outil avancé de collecte d'informations et d'analyse de vulnérabilités.
-   Utilisation responsable recommandée.
-
-Hotkeys :
-   q        - Quitter
-   h        - Help
-   r        - Stats restantes
-   s        - Sauvegarder les stats
-
-Options :
-   (à remplir selon les fonctionnalités ajoutées)
-
-Exemples :
-   shadowviper -scan 192.168.0.1
+Exemple :
+   shadowviper example.com
+   shadowviper 8.8.8.8 --json
 """
 
 
@@ -63,6 +51,8 @@ def _dirb(ctx, argv, raw):
         # Message exact de l'original (typo volontairement conservée)
         print("lunch dirb.help for having help")
         return
+    from terminal.banner import tool_banner
+    tool_banner("DIRB", "Bruteforce de répertoires web")
     if argv[1] == "-w":
         url = argv[2]
         wordlist = argv[3]
@@ -71,60 +61,50 @@ def _dirb(ctx, argv, raw):
         url = argv[2]
         dirb(url, wordlist=None, minimal=True)
     else:
-        url = argv[1]
-        dirb(url)
+        dirb(argv[1], wordlist=argv[2] if len(argv) > 2 else None)
 
 
 @REGISTRY.register("shadowviper", help_text=SV_HELP,
                    summary="Collecte d'infos et analyse de vulnérabilités")
 def _shadowviper(ctx, argv, raw):
-    from Tools.shadowviper import run_shadowviper
+    from terminal.blocks import local, print_blocks
+    from Tools.shadowviper import affichage_viper, investigate
 
-    if len(argv) > 1:
-        run_shadowviper(argv[1])
-    else:
-        user_input = input("shadowviper > Entrez une IP, domaine, URL, ASN ou email : ").strip()
-        run_shadowviper(user_input)
-
-
-@REGISTRY.register("nexariescan", help_text="nexariescan - Lancer le scan Nexari (XSS & liens)")
-def _nexariescan(ctx, argv, raw):
-    from Tools.nexariescan import run_scan
-
-    target = input("URL cible (ex: https://example.com) : ").strip()
-    delay = input("Delay entre requêtes (default 0.5s) : ").strip()
-    delay = float(delay) if delay else 0.5
-
-    print(f"Lancement du scan Nexari sur {target}...")
-    results = run_scan(target, delay=delay, verbose=True, safe_only=True)
-
-    print("\n=== Résumé du scan ===")
-    print("Liens trouvés :", results.get('links_found'))
-    print("Tests de liens effectués :", results.get('tested_links_count'))
-    print("Tests de formulaires effectués :", results.get('tested_forms_count'))
-    print("XSS détectés dans les liens :", len(results.get('xss_in_links', [])))
-    for l in results.get('xss_in_links', []):
-        print(" ->", l)
-    print("XSS détectés dans les formulaires :", len(results.get('xss_in_forms', [])))
-    for f in results.get('xss_in_forms', []):
-        print(" -> page:", f['page'], " action:", f['form_action'])
-
-
-@REGISTRY.register("netstorm", help_text="netstorm <IP> [PORT] [DUREE] [THREADS] - Attaque réseau (légal requis)")
-def _netstorm(ctx, argv, raw):
-    from ToolsFunction import netstorm
-
-    demande = input("Cet outil peut être dangereux voulez vous continuer (y/n) ? ")
-    if demande != "y":
+    if len(argv) < 2:
+        print("Usage : shadowviper <IP | domaine | URL | ASN | e-mail>   (shadowviper.help)")
         return
-    if len(argv) >= 2:
-        ip = argv[1]
-        port = int(argv[2]) if len(argv) >= 3 else 80
-        duration = int(argv[3]) if len(argv) >= 4 else 10
-        threads = int(argv[4]) if len(argv) >= 5 else 50
-        netstorm.run(ip, port, duration, threads)
-    else:
-        print("Utilisation : netstorm <IP> [PORT] [DUREE] [THREADS]")
+    if not getattr(local, "json", False):
+        affichage_viper()
+    print_blocks(investigate(argv[1]))
+
+
+@REGISTRY.register("nexariescan", help_text=(
+    "nexariescan <url> [--delay 0.5] [--pages 50] [--post]\n"
+    "\n"
+    "Parcourt le site (même domaine) puis cherche les XSS réfléchis : paramètres d'URL et formulaires.\n"
+    "  --delay   pause entre deux requêtes, en secondes (défaut 0.5)\n"
+    "  --pages   nombre maximal de pages parcourues (défaut 50)\n"
+    "  --post    teste aussi les formulaires POST (par défaut : GET seulement, moins intrusif)\n"
+    "\n"
+    "Uniquement sur un site que vous êtes autorisé à tester (mission ouverte = périmètre appliqué)."),
+    summary="XSS réfléchis : paramètres d'URL et formulaires (--json)")
+def _nexariescan(ctx, argv, raw):
+    from terminal.blocks import print_blocks
+    from Tools.nexariescan import scan_blocks
+
+    args, opts = [], {"--delay": "0.5", "--pages": "50"}
+    it = iter(argv[1:])
+    for a in it:
+        if a in opts:
+            opts[a] = next(it, opts[a])
+        elif a != "--post":
+            args.append(a)
+    if not args:
+        print("Usage : nexariescan <url> [--delay 0.5] [--pages 50] [--post]   (nexariescan.help)")
+        return
+    from terminal.banner import tool_banner
+    tool_banner("NEXARIE", "XSS réfléchis · paramètres d'URL et formulaires")
+    print_blocks(scan_blocks(args[0], float(opts["--delay"]), int(opts["--pages"]), "--post" in argv))
 
 
 @REGISTRY.register("browser", help_text="browser - navigateur web nebula sécurisé (run as non root)")
@@ -153,20 +133,22 @@ def _nebulers(ctx, argv, raw):
     Menu_Principale()
 
 
-@REGISTRY.register("nebulaGui", help_text="nebulaGui - Lancer l'interface graphique Nebula")
+@REGISTRY.register("nebulaGui", aliases=("dashboard", "gui"), help_text=(
+    "nebulaGui        - Ouvre le dashboard web de Nebula dans le navigateur (alias : dashboard, gui)\n"
+    "\n"
+    "Activité du terminal en direct, console, recon en un clic, palette de commandes (Ctrl+K).\n"
+    "Le dashboard n'est accessible que depuis ce PC (127.0.0.1) et s'arrête avec le terminal."),
+    summary="Dashboard web en direct (s'ouvre dans le navigateur)")
 def _nebula_gui(ctx, argv, raw):
-    import NebulaGui.Gui
-    NebulaGui.Gui.launch_nebula_gui(ctx)  # la GUI partage FS virtuel + historique
+    import webbrowser
+    from NebulaGui import server
+
+    url = server.start(ctx, REGISTRY)
+    print(f"Dashboard Nebula : {url}")
+    webbrowser.open(url)
 
 
-@REGISTRY.register("nebula_ia", help_text="nebula_ia - L'IA du NTC (EN COURS DE DEVELOPPEMENT !!!)")
-def _nebula_ia(ctx, argv, raw):
-    import Nebula_IA.main as nebula_module
-    print("Lancement de Nebula IA...")
-    nebula_module.launch()
-
-
-@REGISTRY.register("nebula_ia_install", help_text="nebula_ia_install - Install Nebula IA")
+@REGISTRY.register("nebula_ia_install", help_text="nebula_ia_install - Installe Ollama et un modèle local pour Nebula IA (commande ia)")
 def _nebula_ia_install(ctx, argv, raw):
     from Nebula_IA.install import main
     main()
